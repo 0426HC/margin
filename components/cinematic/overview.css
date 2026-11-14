@@ -1,0 +1,291 @@
+/* Project overview: the cinematic layer. Same palette and type as the workspace, which stays quiet. */
+.ov {
+  --desk: #111827;
+  --desk-hi: #1f2a48;
+  --lamp: #e6ebf5;
+  --dim: #97a3bd;
+  --line: rgb(230 235 245 / 0.26);
+  --line-strong: rgb(230 235 245 / 0.55);
+  --paper: #edf0f6;
+  --paper-edge: #f9fafd;
+  --ink: #131b2d;
+  --muted: #48536d;
+  --accent: #233f8f;
+  --solid-ui: #d38ae0;
+  --shaky-ui: #f07f73;
+  --ease: cubic-bezier(0.23, 1, 0.32, 1);
+  --f-display: var(--font-display), system-ui, sans-serif;
+  --f-text: var(--font-text), Georgia, serif;
+  --f-label: var(--font-label), "Courier New", monospace;
+  background: var(--desk);
+  color: var(--lamp);
+  font-family: var(--f-text);
+  overflow-x: clip; /* the intro scales past the edges as it leaves; clip keeps sticky working */
+}
+.ov *, .ov *::before, .ov *::after { box-sizing: border-box; }
+:where(.ov) :where(h1, h2, h3, p, ul) { margin: 0; padding: 0; }
+:where(.ov) :where(ul) { list-style: none; }
+:where(.ov) :where(button) { font: inherit; color: inherit; cursor: pointer; background: none; border: 0; padding: 0; text-align: left; }
+.ov :focus-visible { outline: 2px solid var(--lamp); outline-offset: 3px; border-radius: 3px; }
+
+/* marks, in this layer's colours */
+.ov .mark { color: var(--dim); }
+.ov .mark[data-status="solid"] { color: var(--solid-ui); }
+.ov .mark[data-status="shaky"] { color: var(--shaky-ui); }
+
+/* top bar */
+.ov-bar-top {
+  position: fixed; inset: 0 0 auto 0; z-index: 20;
+  display: flex; align-items: center; gap: 18px;
+  height: 56px; padding: 0 24px;
+  pointer-events: none;
+}
+.ov-bar-top > * { pointer-events: auto; }
+.ov-wordmark { font-family: var(--f-display); font-weight: 700; font-size: 18px; letter-spacing: -0.01em; }
+@media (hover: hover) and (pointer: fine) { .ov-wordmark:hover { text-decoration: underline; text-underline-offset: 5px; text-decoration-thickness: 1px; } }
+.ov-bar-course { font-family: var(--f-label); font-size: 13px; color: var(--dim); }
+.ov-continue {
+  margin-left: auto;
+  padding: 7px 13px;
+  background: var(--paper); color: var(--ink);
+  border-radius: 6px;
+  font-family: var(--f-display); font-size: 14px; font-weight: 600;
+  box-shadow: inset 0 1px 0 var(--paper-edge), 0 6px 16px -6px rgb(0 0 0 / 0.5);
+  transition: transform 140ms var(--ease);
+}
+.ov-continue:active { transform: scale(0.97); }
+
+/* ---------- opening scene ---------- */
+.ov-intro { position: relative; height: 170vh; }
+.ov-intro-in {
+  position: sticky; top: 0;
+  height: 100vh;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  padding: 0 clamp(72px, 6.4vw, 112px) 9vh;
+  transform-origin: 24% 62%;
+}
+.ov-course {
+  font-family: var(--f-display);
+  font-size: clamp(76px, 12.4vw, 210px);
+  line-height: 0.9;
+  font-weight: 650;
+  letter-spacing: -0.045em;
+}
+.ov-w {
+  display: inline-block; opacity: 0; transform: translateY(0.22em) scale(1.04);
+  transform-origin: 0 100%;
+  animation: ov-word 900ms var(--ease) forwards;
+}
+@keyframes ov-word { to { opacity: 1; transform: none; } }
+.ov-intro-stat { margin-top: 5vh; max-width: 760px; }
+.ov-intro-stat p { margin-top: 12px; font-family: var(--f-label); font-size: 14px; line-height: 1.5; color: var(--dim); }
+
+/* ---------- a unit's scene ---------- */
+.ov-scene { position: relative; }
+.ov-stage {
+  position: sticky; top: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+.ov-col { position: absolute; z-index: 3; }
+.ov-kicker { font-family: var(--f-label); font-size: 14px; color: var(--dim); margin-bottom: 12px; }
+.ov-title {
+  font-family: var(--f-display);
+  line-height: 1.02; font-weight: 650; letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.ov-ink { margin-top: 30px; }
+.ov-ink h3 { font-family: var(--f-display); font-size: 14px; font-weight: 650; color: var(--dim); margin-bottom: 8px; }
+.ov-ink p { font-size: 18px; line-height: 1.62; }
+
+.ov-stat { margin-top: 30px; }
+.ov-bar { display: flex; gap: 2px; height: 8px; }
+.ov-bar.wide { height: 10px; }
+.ov-cell { flex: 1; display: block; border-radius: 1px; transform-origin: 0 50%; }
+.ov-cell[data-status="solid"] { background: var(--solid-ui); }
+.ov-cell[data-status="shaky"] { background: repeating-linear-gradient(135deg, var(--shaky-ui) 0 3px, rgb(240 127 115 / 0.55) 3px 5px); }
+.ov-cell[data-status="new"] { box-shadow: inset 0 0 0 1px var(--line-strong); }
+.ov-counts { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 10px; font-family: var(--f-label); font-size: 13.5px; color: var(--dim); }
+.ov-counts span { display: inline-flex; align-items: center; gap: 6px; }
+.ov-counts b { font-weight: 700; color: var(--lamp); }
+
+/* the exploded diagram */
+.ov-diagram { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.ov-axis { fill: none; stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 2 5; stroke-linecap: round; }
+.ov-leader { fill: none; stroke: var(--line-strong); stroke-width: 1; }
+.ov-leader-dot { fill: var(--lamp); }
+
+.ov-iso-wrap { position: absolute; z-index: 2; width: 0; height: 0; }
+.ov-iso { position: absolute; transform-style: preserve-3d; }
+.ov-sheet-slot { position: absolute; transform-style: preserve-3d; }
+.ov-sheet {
+  position: relative;
+  width: 100%; height: 100%;
+  padding: 7% 8%;
+  display: block;
+  background: var(--paper); color: var(--ink);
+  border-radius: 4px;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 var(--paper-edge), 0 0 0 0.5px rgb(19 27 45 / 0.5), 10px 12px 26px rgb(0 0 0 / 0.42);
+  transition: transform 180ms var(--ease), background-color 180ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .ov-sheet:hover { transform: translateZ(14px); background: #e4e8f0; }
+}
+.ov-sheet strong { display: block; font-family: var(--f-display); font-size: 17px; line-height: 1.15; font-weight: 650; letter-spacing: -0.01em; padding-right: 8%; }
+.ov-sheet-lines {
+  position: absolute; left: 8%; right: 8%; top: 44%; bottom: 10%;
+  background: repeating-linear-gradient(to bottom, rgb(19 27 45 / 0.3) 0 1px, transparent 1px 10px);
+}
+.ov-sheet-tab { position: absolute; top: -9px; right: 10%; width: 44px; height: 9px; border-radius: 3px 3px 0 0; background: #8e98ad; }
+.ov-sheet-tab[data-status="solid"] { background: #9a4fae; }
+.ov-sheet-tab[data-status="shaky"] { background: #a5312a; }
+
+.ov-label { position: absolute; z-index: 4; display: block; padding: 0; }
+.ov-label-title {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--f-display); font-size: 16.5px; font-weight: 650; line-height: 22px; letter-spacing: -0.01em;
+}
+.ov-label-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ov-label-focus { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--focus-lines, 2); overflow: hidden; margin-top: 2px; padding-left: 20px; font-size: 14.5px; line-height: 1.45; color: var(--dim); }
+.ov-label.static .ov-label-focus { display: block; -webkit-line-clamp: unset; overflow: visible; }
+.ov-label.static .ov-label-text { white-space: normal; overflow: visible; }
+@media (hover: hover) and (pointer: fine) {
+  .ov-label:hover .ov-label-focus { color: var(--lamp); }
+  .ov-label:hover .ov-label-title { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; }
+}
+
+/* ---------- progress rail ---------- */
+.ov-rail { position: fixed; left: 30px; top: 27vh; height: 46vh; z-index: 15; width: 1px; }
+.ov-rail-track, .ov-rail-fill { position: absolute; inset: 0; width: 1px; }
+.ov-rail-track { background: var(--line); }
+.ov-rail-fill { background: var(--lamp); transform-origin: 50% 0; }
+.ov-tick {
+  position: absolute; left: -11px; translate: 0 -50%;
+  display: flex; align-items: center; gap: 10px;
+  height: 24px; width: 24px;
+}
+.ov-tick i { display: block; width: 9px; height: 1px; margin-left: 7px; background: var(--dim); transition: transform 180ms var(--ease), background-color 180ms ease; transform-origin: 0 50%; }
+.ov-tick span {
+  position: absolute; left: 26px; white-space: nowrap;
+  font-family: var(--f-label); font-size: 12.5px; color: var(--lamp);
+  opacity: 0; transition: opacity 140ms ease;
+  padding: 2px 6px; background: var(--desk); border-radius: 3px;
+  pointer-events: none;
+}
+.ov-tick[data-active] i { background: var(--lamp); transform: scaleX(1.9); }
+.ov-tick:focus-visible span { opacity: 1; }
+@media (hover: hover) and (pointer: fine) { .ov-tick:hover span { opacity: 1; } }
+
+/* ---------- outro ---------- */
+
+/* ---------- the zoom ---------- */
+.ov-zoom { position: fixed; inset: 0; z-index: 40; }
+.ov-zoom-desk { position: absolute; inset: 0; background: radial-gradient(120% 90% at 50% 30%, #1a2338, #111827 72%); }
+.ov-zoom-sheet { position: absolute; background: var(--paper); border-radius: 8px; transform-origin: 50% 50%; will-change: transform; }
+.ov-zoom-shadow { position: absolute; inset: 0; border-radius: 8px; box-shadow: inset 0 1px 0 var(--paper-edge), 0 8px 18px rgb(0 0 0 / 0.3), 0 28px 48px -14px rgb(0 0 0 / 0.42); }
+.ov-zoom-print { position: absolute; left: 0; top: 0; transform-origin: 0 0; box-shadow: none; pointer-events: none; }
+
+/* ---------- reduced motion: a plain page ---------- */
+.ov-flat { max-width: 760px; margin: 0 auto; padding: 64px 24px; }
+.ov-flat .ov-title { font-size: 44px; }
+.ov-flat-why { margin-top: 14px; font-size: 17px; line-height: 1.6; }
+.ov-flat ul { margin-top: 24px; display: grid; gap: 16px; }
+.ov-label.static { position: static; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ov-w { animation: none; opacity: 1; transform: none; }
+  .ov-continue, .ov-sheet, .ov-tick i, .ov-tick span { transition: none; }
+}
+
+/* ---------- generative backdrop, agents, unit colour ---------- */
+.ov-main { position: relative; z-index: 1; }
+.ov-unit { display: contents; }
+.ov .mark[data-status="solid"] { color: var(--unit, var(--solid-ui)); }
+.ov .ov-cell[data-status="solid"] { background: var(--unit, var(--solid-ui)); }
+.ov-rail-fill { background: var(--unit-now, var(--lamp)); }
+.ov-tick[data-active] i { background: var(--unit-now, var(--lamp)); }
+.ov-corner { position: fixed; left: 22px; bottom: 18px; z-index: 30; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+
+/* the dining hall behind the opening scene */
+.ov-hall { position: absolute; inset: 0; z-index: -1; }
+.ov-intro-in > :not(.ov-hall) { position: relative; }
+.ov-hall .hall-caption { top: 72px; bottom: auto; right: 24px; }
+
+/* Layer progress: ring = not started, filled = Approved, half filled = Good enough. Each reads without colour. */
+.ov-cell[data-status="good"] { background: linear-gradient(90deg, var(--solid-ui) 50%, transparent 50%); box-shadow: inset 0 0 0 1px var(--solid-ui); }
+.ov .ov-cell[data-status="good"] { background: linear-gradient(90deg, var(--unit, var(--solid-ui)) 50%, transparent 50%); box-shadow: inset 0 0 0 1px var(--unit, var(--solid-ui)); }
+.ov-sheet-tab[data-status="good"] { background: linear-gradient(90deg, #9a4fae 50%, #8e98ad 50%); }
+
+/* the Let's talk! scene: its own screen beside the Parts, one card */
+.ov-talk { position: relative; z-index: 1; min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 520px); align-items: center; gap: clamp(32px, 6vw, 96px); padding: 12vh max(72px, 6.4vw); }
+.ov-talk-head { transform-origin: 0 50%; }
+.ov-talk .ov-title { font-size: clamp(52px, 7vw, 96px); }
+.ov-talk-why { max-width: 36ch; margin: 22px 0 0; font-size: 18px; line-height: 1.6; color: var(--dim); text-wrap: pretty; }
+.ov-talk-card { min-height: 0; justify-content: flex-start; gap: 18px; }
+.ov-talk-who { display: flex; align-items: center; gap: 12px; }
+.ov-talk-who-line { font-family: var(--f-label); font-size: 13.5px; color: var(--dim); }
+.ov-talk-rows { list-style: none; margin: 0; padding: 0; display: grid; }
+.ov-talk-row { display: flex; flex-direction: column; gap: 3px; padding: 14px 0; border-top: 1px solid rgb(230 235 245 / 0.12); }
+.ov-talk-row .ov-end-title { font-size: clamp(22px, 2vw, 28px); }
+.ov-talk-row .ov-end-line { margin-top: 0; }
+.ov-talk-row:focus-visible { outline: 2px solid var(--unit); outline-offset: 2px; border-radius: 4px; }
+@media (hover: hover) and (pointer: fine) { .ov-talk-row:hover .ov-end-title { text-decoration: underline; text-underline-offset: 6px; text-decoration-color: var(--unit); } }
+.ov-talk-card .ov-end-primary { display: inline-block; text-align: center; }
+@media (max-width: 1180px) { .ov-talk { grid-template-columns: minmax(0, 1fr) minmax(0, 430px); gap: 40px; padding: 12vh 56px; } .ov-talk-who-line { font-size: 12.5px; } }
+@media (max-width: 860px) { .ov-talk { grid-template-columns: minmax(0, 1fr); padding: 14vh 32px; } }
+
+/* the Note to Self scene: calm, no pinned motion */
+.ov-note { position: relative; z-index: 1; min-height: 90vh; display: grid; align-content: center; justify-items: start; gap: 18px; padding: 12vh max(72px, 6.4vw) 16vh; }
+.ov-note p { max-width: 52ch; margin: 0; font-size: 18px; line-height: 1.55; color: var(--dim); text-wrap: pretty; }
+.ov-note .ov-title { font-size: clamp(40px, 5vw, 64px); }
+
+/* a sheet carrying real writing (Note to Self): small text instead of ruled lines */
+.ov-sheet-text {
+  position: absolute; left: 8%; right: 8%; top: 40%; bottom: 9%; overflow: hidden;
+  font-family: var(--f-text); font-size: 9.5px; line-height: 1.45; color: rgb(19 27 45 / 0.78);
+  -webkit-mask-image: linear-gradient(to bottom, #000 70%, transparent);
+  mask-image: linear-gradient(to bottom, #000 70%, transparent);
+}
+
+/* the two cards at the end of the course: Note to Self, and where to start or continue. Same family as the home tiles. */
+.ov-ends { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; width: 100%; max-width: 1080px; margin-top: 14px; }
+.ov-end {
+  position: relative; overflow: hidden; isolation: isolate; min-height: 300px;
+  display: flex; flex-direction: column; justify-content: space-between; gap: 22px;
+  padding: 26px 28px 26px; border-radius: 8px; text-align: left;
+  background: radial-gradient(120% 100% at 85% 0%, color-mix(in srgb, var(--unit) 20%, transparent), transparent 70%), rgb(22 31 49 / 0.9);
+  box-shadow: inset 0 1px 0 rgb(230 235 245 / 0.14), 0 0 0 1px rgb(230 235 245 / 0.12), 0 18px 40px -16px rgb(0 0 0 / 0.6);
+}
+.ov-end-note { cursor: pointer; transition: transform 260ms var(--ease), box-shadow 260ms var(--ease); }
+@media (hover: hover) and (pointer: fine) {
+  .ov-end-note:hover { transform: translateY(-6px); box-shadow: inset 0 1px 0 rgb(230 235 245 / 0.24), 0 0 0 1px var(--unit), 0 28px 50px -14px rgb(0 0 0 / 0.7); }
+  .ov-end-note:hover .ov-end-go { text-decoration-color: currentColor; }
+}
+.ov-end-note:active { transform: translateY(-2px) scale(0.99); }
+.ov-end-body { display: flex; flex-direction: column; gap: 6px; }
+.ov-end-kicker { font-family: var(--f-label); font-size: 13px; color: var(--dim); }
+.ov-end-title { font-family: var(--f-display); font-size: clamp(26px, 2.4vw, 34px); font-weight: 650; letter-spacing: -0.03em; line-height: 1.05; text-wrap: balance; }
+.ov-end-line { margin-top: 4px; font-family: var(--f-label); font-size: 14px; color: var(--lamp); }
+.ov-end .ov-bar { margin-top: 8px; max-width: 360px; }
+.ov-end-go { margin-top: 12px; font-family: var(--f-display); font-size: 15px; font-weight: 600; text-decoration: underline; text-underline-offset: 5px; text-decoration-color: var(--line-strong); transition: text-decoration-color 160ms ease; }
+.ov-end-q { margin-top: 2px; max-width: 34em; font-size: 16px; line-height: 1.5; color: var(--dim); text-wrap: pretty; }
+.ov-end-primary {
+  align-self: flex-start; padding: 12px 20px; border-radius: 7px;
+  background: var(--paper); color: var(--ink);
+  font-family: var(--f-display); font-size: 16px; font-weight: 650;
+  box-shadow: inset 0 1px 0 var(--paper-edge), 0 8px 18px -8px rgb(0 0 0 / 0.6);
+  transition: transform 140ms var(--ease);
+}
+.ov-end-primary:active { transform: scale(0.97); }
+.ov-end-art { position: relative; display: block; height: 120px; }
+.ov-end-art > svg:first-child { position: absolute; left: 30px; top: 0; filter: drop-shadow(0 10px 14px rgb(0 0 0 / 0.4)); }
+.ov-end-librarian { position: absolute; left: 0; bottom: -2px; filter: drop-shadow(0 6px 8px rgb(0 0 0 / 0.4)); }
+.nb-sheet { fill: var(--paper); }
+.nb-mid { fill: #dfe3ec; }
+.nb-back { fill: #c9cfdc; }
+.nb-ring { fill: none; stroke: var(--ink); stroke-width: 1.6; }
+.nb-line { fill: rgb(19 27 45 / 0.22); }
+.nb-ribbon { fill: var(--solid-ui); }
+@media (max-width: 860px) { .ov-ends { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .ov-end-note, .ov-end-primary { transition: none; } }

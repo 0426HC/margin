@@ -1,0 +1,57 @@
+/*
+ * Surfaces. Depth is used to show what is paper and what is desk, never as decoration.
+ *   desk   the walnut (or tan) the app sits on; side panes recede into it
+ *   paper  a sheet of manila: the brightest, largest thing on screen. Grain on paper only.
+ *   slip   a small piece of paper: chat answers, primary buttons
+ */
+@layer components {
+  .m-desk {
+    background: var(--desk-gradient), var(--desk);
+    color: var(--panel-ink);
+  }
+
+  .m-panel {
+    background: var(--panel);
+    color: var(--panel-ink);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-panel);
+  }
+
+  .m-paper {
+    position: relative;
+    background: var(--paper);
+    color: var(--ink);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-paper-rest);
+    overflow: hidden;
+    --mark-label: var(--ink-muted);
+    --mark-new: var(--ink-muted);
+    --mark-solid: var(--solid-on-paper);
+    --mark-shaky: var(--shaky-on-paper);
+  }
+  .m-paper[data-raised] {
+    box-shadow: var(--shadow-paper-raised);
+  }
+  /* Very subtle grain: multiply at 8%, never on the desk. */
+  .m-paper::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+    opacity: 0.08;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .8 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+
+  .m-slip {
+    background: var(--paper);
+    color: var(--ink);
+    border-radius: var(--radius) var(--radius) var(--radius) 2px;
+    box-shadow: var(--shadow-slip);
+    --mark-label: var(--ink-muted);
+    --mark-new: var(--ink-muted);
+    --mark-solid: var(--solid-on-paper);
+    --mark-shaky: var(--shaky-on-paper);
+  }
+}

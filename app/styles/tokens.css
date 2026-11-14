@@ -1,0 +1,179 @@
+/*
+ * Margin design tokens: "Reading Room" at midnight. A navy desk under an overhead lamp, porcelain paper, blue-black ink, plum for Approved.
+ * Cinematic outside, calm inside. No green anywhere.
+ *
+ * Three layers, in order:
+ *   1. raw palette    named colours, never used directly by components
+ *   2. semantic       what a colour is for (desk, paper, accent, solid, shaky), swapped by theme
+ *   3. scales         type, space, radius, depth, motion
+ */
+
+:root {
+  /* ---------- 1. raw palette ---------- */
+  --midnight: #111827;
+  --midnight-hi: #1f2a48; /* the overhead lamp: lighter navy-indigo at the top centre */
+  --midnight-deep: #0a0f1b; /* the edges and bottom of the desk */
+  --midnight-panel: #161f31;
+  --midnight-field: #0c1220;
+  --mist: #d3d9e6; /* the light desk */
+  --mist-hi: #dfe4ee;
+  --mist-panel: #dfe4ee;
+  --mist-field: #f4f6fa;
+  --porcelain: #edf0f6;
+  --porcelain-edge: #f9fafd;
+  --porcelain-light: #f8f9fc;
+  --porcelain-light-edge: #ffffff;
+  --ink-navy: #131b2d;
+  --ink-navy-muted: #48536d;
+  --starlight: #e6ebf5; /* text on the desk */
+  --haze: #97a3bd; /* quiet text on the desk */
+  --ink-blue: #233f8f; /* the one accent, on paper */
+  --ink-blue-desk: #7896e6; /* the same ink, lifted to sit on the desk */
+  --ink-blue-text: #f3f6fc;
+  --plum: #d38ae0; /* Approved and Good enough, on the desk */
+  --plum-paper: #7d2c92; /* Approved and Good enough, on paper */
+  --coral: #f07f73; /* errors and "needs work", on the desk */
+  --brick: #a5312a; /* errors and "needs work", on paper */
+
+  /* The agents: one colour and one shape each. */
+  --agent-explainer: #74bde6;
+  --agent-quizzer: #e38fb0;
+  --agent-examiner: #a98bdc;
+  --agent-connector: #7f8fe6;
+  --agent-librarian: #edf0f6;
+
+  /* ---------- 2. semantic, dark desk (the default) ---------- */
+  --desk: var(--midnight);
+  --desk-hi: var(--midnight-hi);
+  /* The overhead lamp: navy-indigo pooled at the top centre, deep navy at the edges, one faint plum glow in a corner. Never a purple-to-blue sweep. */
+  --desk-gradient: radial-gradient(60% 50% at 0% 0%, rgb(125 44 146 / 0.13), transparent 70%),
+    radial-gradient(90% 75% at 50% 0%, var(--midnight-hi) 0%, #152036 45%, #0f1626 75%, var(--midnight-deep) 100%);
+  --panel: var(--midnight-panel); /* the side panes: they recede into the desk */
+  --panel-ink: var(--starlight);
+  --panel-muted: var(--haze);
+  --panel-edge: rgb(240 244 252 / 0.09);
+  --panel-edge-strong: rgb(230 235 245 / 0.28);
+  --field: var(--midnight-field);
+  --row-hover: rgb(230 235 245 / 0.06);
+  --row-active: rgb(230 235 245 / 0.12);
+  --solid: var(--plum);
+  --shaky: var(--coral);
+  --new: var(--haze);
+  --focus: var(--porcelain);
+  --shadow-rgb: 0 0 0;
+  --accent-on-desk: var(--ink-blue-desk);
+
+  /* paper: the reading sheet and chat slips. The brightest, largest thing on screen. */
+  --paper: var(--porcelain);
+  --paper-edge: var(--porcelain-edge);
+  --paper-line: rgb(19 27 45 / 0.14);
+  --ink: var(--ink-navy);
+  --ink-muted: var(--ink-navy-muted);
+  --accent: var(--ink-blue);
+  --accent-on: var(--ink-blue-text);
+  --solid-on-paper: var(--plum-paper);
+  --shaky-on-paper: var(--brick);
+
+  /* ---------- 3. scales ---------- */
+  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-text: var(--font-literata), Georgia, "Times New Roman", serif;
+  --font-label: var(--font-courier), "Courier New", ui-monospace, monospace;
+
+  /* type scale: a real scale, 1.2 for UI and a larger step for reading */
+  --text-label: 12px; /* labels, page markers, citations (Courier Prime) */
+  --text-small: 13.5px;
+  --text-ui: 14.5px;
+  --text-body: 15.5px;
+  --text-read: 17.5px; /* the Original and Explained */
+  --text-h3: 22px;
+  --text-h2: 28px;
+  --text-h1: clamp(28px, 2.6vw, 36px);
+  --text-display: clamp(56px, 8vw, 128px);
+  --leading-tight: 1.08;
+  --leading-snug: 1.3;
+  --leading-ui: 1.45;
+  --leading-read: 1.72; /* generous, for long reading */
+  --tracking-display: -0.03em;
+  --measure: 62ch; /* the reading column */
+
+  /* space: a 4px grid */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 72px;
+  --gutter: 112px; /* the margin: page markers and citations live here */
+
+  --radius: 8px;
+  --radius-sm: 6px;
+  --radius-xs: 4px;
+
+  /* depth shows what is paper and what is desk */
+  --shadow-paper-rest: inset 0 1px 0 var(--paper-edge), 0 1px 2px rgb(var(--shadow-rgb) / 0.28), 0 8px 18px rgb(var(--shadow-rgb) / 0.3),
+    0 28px 48px -14px rgb(var(--shadow-rgb) / 0.42);
+  --shadow-paper-raised: inset 0 1px 0 var(--paper-edge), 0 2px 4px rgb(var(--shadow-rgb) / 0.3), 0 14px 28px rgb(var(--shadow-rgb) / 0.36),
+    0 36px 60px -14px rgb(var(--shadow-rgb) / 0.5);
+  --shadow-slip: inset 0 1px 0 var(--paper-edge), 0 1px 2px rgb(0 0 0 / 0.3), 0 6px 12px -6px rgb(0 0 0 / 0.35);
+  --shadow-panel: inset 0 1px 0 var(--panel-edge), 0 1px 2px rgb(0 0 0 / 0.25), 0 10px 24px -8px rgb(0 0 0 / 0.35);
+  --shadow-inset: inset 0 1px 2px rgb(0 0 0 / 0.25);
+
+  /* motion: strong ease-out, short. Transform and opacity only. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 140ms;
+  --dur: 220ms;
+  --dur-slow: 300ms;
+
+  /* marks follow the surface they sit on */
+  --mark-new: var(--new);
+  --mark-solid: var(--solid);
+  --mark-shaky: var(--shaky);
+  --mark-label: var(--panel-muted); /* the word beside a mark is plain text, so it keeps text contrast */
+}
+
+/* the light mist desk is the alternative theme */
+[data-theme="light"] {
+  --desk: var(--mist);
+  --desk-hi: var(--mist-hi);
+  --desk-gradient: radial-gradient(90% 75% at 50% 0%, var(--mist-hi) 0%, var(--mist) 70%, #c9d0de 100%);
+  --panel: var(--mist-panel);
+  --panel-ink: var(--ink-navy);
+  --panel-muted: #4a5570;
+  --panel-edge: rgb(255 255 255 / 0.5);
+  --panel-edge-strong: rgb(19 27 45 / 0.28);
+  --field: var(--mist-field);
+  --row-hover: rgb(19 27 45 / 0.06);
+  --row-active: rgb(19 27 45 / 0.12);
+  --solid: var(--plum-paper);
+  --shaky: var(--brick);
+  --focus: var(--ink-blue);
+  --shadow-rgb: 40 50 70;
+  --accent-on-desk: var(--ink-blue);
+  --paper: var(--porcelain-light);
+  --paper-edge: var(--porcelain-light-edge);
+}
+
+/* surfaces re-point the mark colours */
+.surface-paper {
+  --mark-label: var(--ink-muted);
+  --mark-new: var(--ink-muted);
+  --mark-solid: var(--solid-on-paper);
+  --mark-shaky: var(--shaky-on-paper);
+}
+.surface-desk {
+  --mark-label: var(--panel-muted);
+  --mark-new: var(--new);
+  --mark-solid: var(--solid);
+  --mark-shaky: var(--shaky);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 1ms;
+    --dur: 1ms;
+    --dur-slow: 1ms;
+  }
+}

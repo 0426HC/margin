@@ -1,0 +1,111 @@
+/* Type roles, buttons, inputs, marks, the segmented control, citations and messages. */
+@layer components {
+  /* ---------- type roles ---------- */
+  .t-display { font-family: var(--font-display); font-size: var(--text-display); line-height: 0.9; font-weight: 650; letter-spacing: -0.045em; }
+  .t-h1 { font-family: var(--font-display); font-size: var(--text-h1); line-height: var(--leading-tight); font-weight: 650; letter-spacing: -0.02em; text-wrap: balance; }
+  .t-h2 { font-family: var(--font-display); font-size: var(--text-h2); line-height: 1.12; font-weight: 650; letter-spacing: -0.02em; text-wrap: balance; }
+  .t-h3 { font-family: var(--font-display); font-size: var(--text-h3); line-height: 1.2; font-weight: 650; letter-spacing: -0.01em; }
+  .t-heading-s { font-family: var(--font-display); font-size: var(--text-small); line-height: var(--leading-snug); font-weight: 650; }
+  .t-read, .t-body, .t-ui, .m-msg p, .m-field-hint, .m-subtitle { text-wrap: pretty; }
+  .t-read { font-family: var(--font-text); font-size: var(--text-read); line-height: var(--leading-read); max-width: var(--measure); }
+  .t-body { font-family: var(--font-text); font-size: var(--text-body); line-height: 1.6; }
+  .t-ui { font-family: var(--font-text); font-size: var(--text-ui); line-height: var(--leading-ui); }
+  .t-label { font-family: var(--font-label); font-size: var(--text-label); line-height: 1.4; }
+
+  /* ---------- buttons ---------- */
+  .m-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+    padding: 6px 12px; min-height: 32px;
+    border: 1px solid transparent; border-radius: var(--radius-sm);
+    font-family: var(--font-text); font-size: var(--text-small); line-height: 1.2; font-weight: 400;
+    color: var(--panel-ink); background: transparent;
+    cursor: pointer;
+    transition: transform var(--dur-fast) var(--ease-out), background-color var(--dur-fast) ease, opacity var(--dur-fast) ease;
+  }
+  .m-btn:active:not(:disabled) { transform: scale(0.97); }
+  .m-btn:disabled { opacity: 0.45; cursor: default; }
+  /* secondary: an outline on the desk */
+  .m-btn[data-variant="secondary"] { border-color: var(--panel-edge-strong); }
+  /* primary: a slip of paper on the desk */
+  .m-btn[data-variant="primary"] { background: var(--paper); color: var(--ink); font-weight: 600; box-shadow: inset 0 1px 0 var(--paper-edge); }
+  /* accent: the ink, for actions on paper and in the composer */
+  .m-btn[data-variant="accent"] { background: var(--accent-on-desk); color: var(--accent-on); font-family: var(--font-display); font-weight: 600; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12); }
+  .m-paper .m-btn[data-variant="accent"] { background: var(--accent); }
+  /* quiet: a text button */
+  .m-btn[data-variant="quiet"] { padding-inline: 4px; text-decoration: underline; text-decoration-color: var(--panel-edge-strong); text-underline-offset: 4px; }
+  .m-btn[data-size="lg"] { padding: 9px 18px; min-height: 40px; font-size: var(--text-ui); }
+  @media (hover: hover) and (pointer: fine) {
+    .m-btn:hover:not(:disabled) { background-color: var(--row-hover); }
+    .m-btn[data-variant="primary"]:hover:not(:disabled) { background-color: var(--paper-edge); }
+    .m-btn[data-variant="accent"]:hover:not(:disabled) { filter: brightness(1.12); }
+    .m-btn[data-variant="quiet"]:hover:not(:disabled) { background: none; text-decoration-color: currentColor; }
+  }
+
+  .m-icon-btn {
+    display: grid; place-items: center; width: 32px; height: 32px;
+    border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--panel-muted); cursor: pointer;
+    transition: transform var(--dur-fast) var(--ease-out), background-color var(--dur-fast) ease;
+  }
+  .m-icon-btn:active { transform: scale(0.97); }
+  @media (hover: hover) and (pointer: fine) { .m-icon-btn:hover { background: var(--row-hover); color: var(--panel-ink); } }
+
+  /* ---------- inputs ---------- */
+  .m-input {
+    width: 100%; padding: 9px 11px;
+    background: var(--field); color: var(--panel-ink);
+    border: 1px solid var(--panel-edge); border-radius: var(--radius-sm);
+    font-family: var(--font-text); font-size: var(--text-ui); line-height: var(--leading-ui);
+    box-shadow: var(--shadow-inset);
+  }
+  .m-input::placeholder { color: var(--panel-muted); }
+  textarea.m-input { resize: none; }
+  .m-input[aria-invalid="true"] { border-color: var(--shaky); }
+  .m-paper .m-input { background: rgb(19 27 45 / 0.07); color: var(--ink); border-color: var(--paper-line); box-shadow: inset 0 1px 2px rgb(19 27 45 / 0.18); }
+  .m-paper .m-input::placeholder { color: var(--ink-muted); }
+  .m-field-label { display: block; margin-bottom: var(--space-1); font-family: var(--font-display); font-size: var(--text-small); font-weight: 650; }
+  .m-field-hint { margin-top: var(--space-1); font-size: var(--text-small); line-height: 1.45; color: var(--panel-muted); }
+  .m-paper .m-field-hint { color: var(--ink-muted); }
+  .m-field-error { margin-top: var(--space-1); font-size: var(--text-small); line-height: 1.45; color: var(--shaky); }
+
+  /* ---------- tag ---------- */
+  .m-tag { display: inline-block; padding: 2px 7px; border: 1px solid var(--panel-edge); border-radius: var(--radius-xs); font-family: var(--font-label); font-size: var(--text-label); }
+
+  /* ---------- mastery marks: ring = new, half = shaky, filled = solid ---------- */
+  .m-mark { display: inline-flex; align-items: center; gap: 6px; flex: none; color: var(--mark-new); }
+  .m-mark[data-status="solid"] { color: var(--mark-solid); }
+  .m-mark[data-status="shaky"] { color: var(--mark-shaky); }
+  .m-mark-label { font-family: var(--font-label); font-size: var(--text-label); color: var(--mark-label); }
+
+  /* ---------- segmented control (sliding thumb) ---------- */
+  .m-seg { display: inline-flex; padding: 3px; border-radius: var(--radius); background: rgb(19 27 45 / 0.1); box-shadow: inset 0 1px 2px rgb(19 27 45 / 0.18); }
+  .m-seg-btn {
+    position: relative; padding: 6px 16px; border: 0; border-radius: var(--radius-sm); background: transparent; cursor: pointer;
+    font-family: var(--font-display); font-size: var(--text-ui); font-weight: 600; color: var(--ink-muted);
+    transition: color var(--dur-fast) ease;
+  }
+  .m-seg-btn[aria-selected="true"] { color: var(--accent-on); }
+  .m-seg-thumb { position: absolute; inset: 0; border-radius: var(--radius-sm); background: var(--accent); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 1px 2px rgb(19 27 45 / 0.35); }
+  .m-seg-label { position: relative; z-index: 1; }
+  .m-seg-btn:focus-visible { outline-color: var(--accent); }
+
+  /* ---------- citations ---------- */
+  .m-cite-inline {
+    display: inline; padding: 0; background: none; border: 0; cursor: pointer;
+    font-family: var(--font-label); font-size: var(--text-label); color: var(--accent);
+    text-decoration: underline; text-decoration-color: rgb(35 63 143 / 0.4); text-underline-offset: 3px;
+    transition: text-decoration-color var(--dur-fast) ease;
+  }
+  @media (hover: hover) and (pointer: fine) { .m-cite-inline:hover { text-decoration-color: currentColor; } }
+  .m-cite-inline:focus-visible { outline-color: var(--accent); }
+
+  /* ---------- chat messages ---------- */
+  .m-msg { max-width: 94%; }
+  .m-msg p { margin: 0; font-size: var(--text-ui); line-height: 1.55; }
+  .m-msg[data-kind="tutor"] { align-self: flex-start; padding: 10px 14px 11px; }
+  .m-msg-label { display: block; margin-bottom: var(--space-1); font-family: var(--font-label); font-size: var(--text-label); color: var(--ink-muted); }
+  .m-msg[data-kind="user"] { align-self: flex-end; padding: 9px 14px 10px; background: var(--accent-on-desk); color: var(--accent-on); border-radius: var(--radius) var(--radius) 2px var(--radius); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1), 0 1px 2px rgb(0 0 0 / 0.3); }
+  .m-msg[data-kind="action"] { align-self: flex-end; font-family: var(--font-label); font-size: var(--text-label); color: var(--panel-muted); }
+  .m-msg[data-kind="action"] p { font-size: inherit; line-height: 1.4; }
+  .m-msg[data-kind="saved"] { align-self: flex-end; max-width: 100%; }
+  .m-msg[data-kind="saved"] p { font-family: var(--font-label); font-size: var(--text-label); color: var(--panel-muted); padding: 3px 9px; border: 1px dashed var(--panel-edge-strong); border-radius: var(--radius-xs); }
+}

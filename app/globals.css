@@ -1,0 +1,52 @@
+@import "tailwindcss";
+@import "./styles/tokens.css";
+@import "./styles/surfaces.css";
+@import "./styles/ui.css";
+@import "./styles/reading.css";
+@import "./styles/agents.css";
+@import "./styles/import.css";
+@import "./styles/setup.css";
+@import "./styles/talk.css";
+
+/* Tokens as Tailwind utilities: bg-desk, text-ink, font-display, rounded-margin ... */
+@theme inline {
+  --color-desk: var(--desk);
+  --color-desk-hi: var(--desk-hi);
+  --color-panel: var(--panel);
+  --color-panel-ink: var(--panel-ink);
+  --color-panel-muted: var(--panel-muted);
+  --color-field: var(--field);
+  --color-paper: var(--paper);
+  --color-paper-edge: var(--paper-edge);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-accent: var(--accent);
+  --color-solid: var(--solid);
+  --color-shaky: var(--shaky);
+  --radius-margin: var(--radius);
+  --ease-margin: var(--ease-out);
+}
+
+html {
+  background: var(--desk);
+  color: var(--panel-ink);
+  font-family: var(--font-text);
+  -webkit-font-smoothing: antialiased;
+}
+body {
+  margin: 0;
+  min-height: 100dvh;
+}
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

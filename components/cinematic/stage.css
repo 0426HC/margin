@@ -1,0 +1,189 @@
+
+.st { --mark-new: var(--dim); --mark-label: var(--dim); --mark-solid: var(--solid-ui); min-height: 100dvh; }
+.st-main { position: relative; z-index: 1; max-width: 1240px; margin: 0 auto; padding: 0 clamp(24px, 6vw, 96px) 14vh; }
+
+/* The headline settles in once. Nothing else on these screens moves on its own except the ink reveal and the agents. */
+.st-title {
+  margin: 0; font-family: var(--f-display); font-weight: 650; line-height: 0.88; letter-spacing: -0.055em; text-wrap: balance;
+  transform-origin: 0% 100%; animation: st-push 760ms var(--ease) both;
+}
+@keyframes st-push { from { opacity: 0; transform: scale(1.07); } to { opacity: 1; transform: none; } }
+.st-ink { font-size: clamp(17px, 1.5vw, 21px); line-height: 1.6; max-width: 36em; text-wrap: pretty; }
+.st-ink-w { opacity: 0.1; animation: st-ink 600ms var(--ease) forwards; }
+@keyframes st-ink { to { opacity: 1; } }
+.st-fade { animation: st-in 700ms ease both; }
+@keyframes st-in { from { opacity: 0; } }
+
+.st-agent { display: inline-block; flex: none; transform-origin: 50% 100%; }
+.st-agent[data-mood="idle"] { animation: st-bob 3.6s ease-in-out infinite; }
+.st-agent[data-mood="busy"] { animation: st-bob 0.9s ease-in-out infinite; }
+.st-agent[data-mood="eager"] { transform: translateY(-4px) rotate(-5deg); transition: transform 220ms var(--ease); }
+@keyframes st-bob { 50% { transform: translateY(-3px); } }
+.st-agent .ag-foot, .st-agent .ag-eyes { --i: 1; }
+
+/* a slip of paper the agent holds up */
+.st-slip {
+  position: relative; max-width: 25em; padding: 14px 17px 15px;
+  background: var(--paper); color: var(--ink); border-radius: 8px 8px 8px 2px;
+  box-shadow: inset 0 1px 0 var(--paper-edge), 0 10px 22px -8px rgb(0 0 0 / 0.55);
+  font-size: 15.5px; line-height: 1.5; text-wrap: pretty;
+}
+.st-slip b { font-family: var(--f-display); font-weight: 650; }
+.st-slip-who { display: block; margin-bottom: 3px; font-family: var(--f-label); font-size: 12px; color: var(--muted); }
+.st-slip[data-tail="left"]::before {
+  content: ""; position: absolute; left: -7px; bottom: 14px; width: 14px; height: 14px; background: var(--paper);
+  transform: rotate(45deg); border-radius: 0 0 0 3px;
+}
+
+/* ---------- New project ---------- */
+.st-new { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); column-gap: clamp(32px, 5vw, 88px); align-items: start; padding-top: clamp(112px, 16vh, 156px); }
+.st-new-title { font-size: clamp(56px, 8.4vw, 124px); }
+.st-new-lede { margin-top: clamp(20px, 3.5vh, 32px); max-width: 33em; font-size: clamp(17px, 1.45vw, 20px); line-height: 1.6; color: var(--lamp); text-wrap: pretty; }
+.st-new-form { margin-top: clamp(28px, 5vh, 48px); display: grid; gap: 22px; max-width: 560px; }
+.st .m-input { background: rgb(10 15 27 / 0.55); border-color: var(--line-strong); color: var(--lamp); }
+.st .m-input::placeholder { color: var(--dim); }
+.st label, .st .m-field-hint { color: var(--lamp); }
+.st .m-field-hint { color: var(--dim); }
+.st .m-drop { background: rgb(10 15 27 / 0.5); border-color: var(--line-strong); backdrop-filter: blur(2px); }
+.st .m-drop[data-over] { background: rgb(230 235 245 / 0.12); border-color: var(--lamp); }
+.st .m-drop .t-ui { color: var(--dim); }
+.st .m-drop .m-btn[data-variant="quiet"] { color: var(--lamp); }
+.st .m-btn[data-variant="primary"] { color: var(--ink); }
+.st .m-field-error { color: #f6a39a; }
+.st-flow { display: grid; gap: 8px; margin-top: 6px; padding: 0; list-style: none; counter-reset: flow; font-size: 15px; line-height: 1.45; color: var(--dim); }
+.st-flow li { display: grid; grid-template-columns: 2.2em minmax(0, 1fr); counter-increment: flow; }
+.st-flow li::before { content: counter(flow) "."; font-family: var(--f-label); color: var(--lamp); }
+.st-flow b { color: var(--lamp); font-weight: 600; }
+
+/* the Librarian's desk */
+.st-desk { position: sticky; top: 96px; display: grid; justify-items: start; gap: 22px; min-height: 380px; padding-top: 12px; }
+.st-desk-scene { position: relative; width: min(100%, 460px); height: 300px; }
+.st-desk-top { position: absolute; left: 0; right: 0; bottom: 18px; height: 120px; border-radius: 8px; background: linear-gradient(#1d2740, #1a2338); box-shadow: inset 0 1px 0 rgb(230 235 245 / 0.22), 0 24px 36px -12px rgb(0 0 0 / 0.65), 0 0 0 1px rgb(230 235 245 / 0.14); }
+.st-desk-agent { position: absolute; left: 26px; bottom: 96px; z-index: 2; filter: drop-shadow(0 8px 10px rgb(0 0 0 / 0.4)); }
+.st-stack { position: absolute; right: 34px; bottom: 100px; width: 150px; height: 120px; z-index: 2; }
+.st-sheetlet {
+  position: absolute; left: 0; bottom: 0; width: 138px; height: 96px; border-radius: 3px;
+  background: var(--paper); box-shadow: inset 0 1px 0 var(--paper-edge), 0 1px 2px rgb(0 0 0 / 0.5);
+  transform: translate(var(--dx), calc(var(--n) * -2.6px)) rotate(var(--r));
+  animation: st-file 520ms var(--ease) both;
+}
+.st-sheetlet::before { content: ""; position: absolute; inset: 14px 16px auto; height: 38px; background: repeating-linear-gradient(to bottom, rgb(19 27 45 / 0.32) 0 2px, transparent 2px 9px); }
+.st-sheetlet[data-failed] { background: #c4cad6; }
+@keyframes st-file { from { opacity: 0; transform: translate(calc(var(--dx) - 90px), calc(var(--n) * -2.6px - 70px)) rotate(calc(var(--r) - 12deg)); } }
+.st-desk-slip { margin-left: 4px; }
+.st-desk-count { font-family: var(--f-label); font-size: 13.5px; color: var(--dim); }
+
+.st-files { margin-top: clamp(32px, 6vh, 56px); }
+.st .m-file-row[data-state="waiting"] .m-file-name { color: var(--muted); }
+.st-after { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 20px; margin-top: 28px; }
+.st-after p { max-width: 46ch; color: var(--lamp); }
+
+@media (max-width: 1000px) {
+  .st-new { grid-template-columns: minmax(0, 1fr); }
+  .st-desk { position: relative; top: 0; order: -1; min-height: 0; }
+  .st-desk { margin-bottom: 28px; }
+  .st-desk-scene { height: 210px; }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .st-title, .st-fade, .st-ink-w, .st-sheetlet { animation: none; opacity: 1; }
+  .st-agent[data-mood] { animation: none; transition: none; }
+
+}
+
+/* The overview's unlayered button reset beats the layered Button styles, so the buttons are restated here. */
+.st .m-btn { padding: 6px 12px; border: 1px solid transparent; border-radius: var(--radius-sm); color: var(--lamp); text-align: center; }
+.st .m-btn[data-size="lg"] { padding: 9px 18px; }
+.st .m-btn[data-variant="primary"] { background: var(--paper); color: var(--ink); font-weight: 600; }
+.st .m-btn[data-variant="primary"]:disabled { opacity: 0.55; }
+.st .m-btn[data-variant="quiet"] { padding-inline: 4px; }
+
+.st .ov-continue { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60vw; }
+@media (max-width: 700px) { .st .ov-bar-course { display: none; } 
+}
+
+/* ---------- Note to Self: the notebook, an open book ---------- */
+/* Two plain pages: my quick notes on the left, my saved write-ups on the right, nothing else printed. Layers are told apart by space only. */
+.nb { --nb-chat: 392px; --nb-plum: rgb(176 96 196 / 0.7); position: relative; z-index: 1; padding: 76px 16px 40px; padding-right: calc(var(--nb-chat) + 16px); }
+.nb[data-chat="closed"] { --nb-chat: 64px; }
+@media (max-width: 1180px) { .nb { --nb-chat: 336px; } .nb[data-chat="closed"] { --nb-chat: 64px; } }
+.nb-stage { position: relative; max-width: 1180px; margin: 0 auto; }
+.nb-book { display: grid; grid-template-columns: minmax(0, 1fr); padding: 64px 0 40px; border-radius: 16px; min-height: calc(100dvh - 116px); --solid-on-paper: #7d2c92; }
+.nb-book :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.nb-book .nb-text:focus-visible { outline: none; } /* just text on the paper, like the Notepad: the caret is the focus mark */
+
+/* the plum margin line of each page */
+.nb-margin { position: absolute; z-index: 0; top: 0; bottom: 0; width: 2px; background: var(--nb-plum); pointer-events: none; }
+.nb-margin[data-side="left"] { left: 40px; }
+.nb-margin[data-side="right"] { left: calc(50% + 40px); }
+/* the spine: the pages curve into the gutter */
+.nb-spine { position: absolute; z-index: 1; top: 0; bottom: 0; left: calc(50% - 40px); width: 80px; pointer-events: none; background: linear-gradient(to right, transparent, rgb(19 27 45 / 0.07) 28%, rgb(19 27 45 / 0.2) 47%, rgb(19 27 45 / 0.3) 50%, rgb(19 27 45 / 0.2) 53%, rgb(19 27 45 / 0.07) 72%, transparent); }
+
+.nb-part { display: grid; }
+.nb-row { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); padding-bottom: 64px; }
+.nb-l { position: relative; min-width: 0; padding: 0 36px 0 56px; }
+.nb-r { min-width: 0; padding: 0 28px 0 56px; }
+.nb-text { display: block; width: 100%; padding: 0; border: 0; border-radius: 0; outline-offset: 4px; resize: none; overflow: hidden; background: transparent; color: var(--ink); font: 17px/1.7 var(--font-text); letter-spacing: 0; box-shadow: none; appearance: none; -webkit-appearance: none; }
+.nb-save-error { display: block; margin-top: 6px; font: 12px/1.4 var(--font-label); color: var(--error-on-paper, #a5312a); }
+
+/* chat replies on the overview-style screens: the screen's unlayered list reset would otherwise hide the bullets and numbers */
+.ov .m-md ul, .ov .m-md ol { padding-left: 1.3em; margin: 0 0 0.6em; }
+.ov .m-md > :last-child { margin-bottom: 0; }
+.ov .m-md ul { list-style: disc; }
+.ov .m-md ol { list-style: decimal; }
+
+/* the one button: only while the pointer or focus is in this layer's notes, set in the gap above them so it never covers the text */
+.nb .nb-draft { position: absolute; top: -34px; right: 36px; height: 24px; padding: 0 9px; border: 1px solid rgb(125 44 146 / 0.5); border-radius: 5px; background: none; color: var(--plum-paper); font: 12px/22px var(--font-label); white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 150ms var(--ease-out), background-color 150ms ease, transform 160ms var(--ease-out); }
+.nb .nb-l:hover .nb-draft, .nb .nb-l:focus-within .nb-draft { opacity: 1; pointer-events: auto; }
+.nb .nb-draft:disabled { cursor: default; }
+.nb .nb-draft:active:not(:disabled) { transform: scale(0.97); }
+@media (hover: hover) and (pointer: fine) { .nb .nb-draft:hover:not(:disabled) { background: rgb(125 44 146 / 0.08); } }
+@media (hover: none) { .nb .nb-draft { opacity: 1; pointer-events: auto; } }
+@media (prefers-reduced-motion: reduce) { .nb .nb-draft { transition: none; } }
+
+/* "Ask about this" */
+.ov .nb-ask { position: fixed; z-index: 15; transform: translate(-50%, -100%); padding: 6px 12px; border-radius: 6px; background: var(--ink-blue); color: #f3f6fc; font: 600 13.5px var(--font-display); box-shadow: 0 4px 14px rgb(10 15 27 / 0.45); animation: nb-chip 140ms var(--ease-out) both; }
+@keyframes nb-chip { from { opacity: 0; } }
+
+/* the chat: fixed on the right, its own scroll */
+.nb-chat { position: fixed; z-index: 11; top: 68px; right: 16px; bottom: 16px; width: calc(var(--nb-chat) - 16px); display: flex; flex-direction: column; }
+.nb-chat:not([data-open]) { bottom: auto; width: 48px; }
+.nb-chat-body { flex: 1; min-height: 0; display: flex; }
+.nb-chat-body[hidden] { display: none; }
+.nb-chat-body > .m-chat { flex: 1; }
+.nb .nb-chat-toggle { position: absolute; z-index: 2; top: 10px; right: 10px; padding: 4px 9px; border: 1px solid var(--panel-edge-strong); border-radius: 6px; background: var(--panel); color: var(--panel-ink); font: 600 13px var(--font-display); }
+.nb-chat:not([data-open]) .nb-chat-toggle { position: static; width: 48px; padding: 12px 0; text-align: center; box-shadow: var(--shadow-panel); }
+@media (hover: hover) and (pointer: fine) { .nb .nb-chat-toggle:hover { background: rgb(240 244 252 / 0.1); } }
+.nb-chat .m-chat-head { padding-right: 96px; }
+
+/* the cover: swings open on its left edge, then is gone */
+.nb-cover { position: absolute; z-index: 9; inset: 0 0 auto 0; height: max(560px, calc(100dvh - 116px)); transform-origin: 0 50%; pointer-events: none; animation: nb-open 1000ms var(--ease-in-out) 350ms both; }
+.nb-cover-face { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: clamp(28px, 5vw, 64px); border-radius: 16px; background: linear-gradient(to right, #0e1630, #16213f 22px); color: var(--lamp); box-shadow: 0 24px 60px rgb(5 8 18 / 0.5); }
+.nb-cover-face::after { content: ""; position: absolute; top: 0; bottom: 0; right: clamp(36px, 6vw, 80px); width: 14px; background: #5a2468; }
+.nb-cover-title { margin: 0; font-family: var(--font-display); font-size: clamp(40px, 6vw, 84px); line-height: 1; font-weight: 650; letter-spacing: -0.035em; }
+.nb-cover-sub { margin: 12px 0 0; font-family: var(--font-label); font-size: 14px; color: var(--dim); }
+@keyframes nb-open {
+  0% { transform: perspective(2200px) rotateY(0deg); opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: perspective(2200px) rotateY(-104deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .nb-cover { display: none; } .nb-ask { animation: none; } }
+
+/* the top bar is solid here, so the notebook scrolls under it instead of through it */
+.ov:has(.nb) .ov-bar-top { background: rgb(17 24 39 / 0.94); border-bottom: 1px solid var(--line); backdrop-filter: blur(6px); }
+
+/* a phone-width page: one page at a time (the write-up, then the notes under it), the chat as a sheet from the bottom */
+@media (max-width: 760px) {
+  .nb, .nb[data-chat="closed"] { --nb-chat: 0px; padding: 72px 8px 80px; }
+  .nb-margin[data-side="right"], .nb-spine { display: none; }
+  .nb-margin[data-side="left"] { left: 24px; }
+  .nb-row { grid-template-columns: minmax(0, 1fr); row-gap: 20px; }
+  .nb-r { order: -1; padding: 0 16px 0 40px; }
+  .nb-l { padding: 0 16px 0 40px; }
+  .nb .nb-draft { top: -30px; right: 16px; }
+  .nb-chat { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; height: min(62dvh, 520px); }
+  .nb-chat:not([data-open]) { top: auto; bottom: 8px; left: auto; width: auto; height: auto; }
+  .nb .nb-chat-toggle { position: absolute; }
+  .nb-chat:not([data-open]) .nb-chat-toggle { position: static; width: auto; padding: 10px 16px; }
+}

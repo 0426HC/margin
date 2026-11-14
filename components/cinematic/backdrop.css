@@ -1,0 +1,6 @@
+.bd { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; background: #111827; }
+.bd canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.bd-icon { position: absolute; will-change: transform, opacity; }
+.bd-icons { position: absolute; inset: 0; }
+@keyframes bd-float { from { transform: translateY(-9px) rotate(-3deg); } to { transform: translateY(9px) rotate(3deg); } }
+.curtain { position: fixed; inset: 0; z-index: 80; pointer-events: all; will-change: clip-path, opacity; }

@@ -1,0 +1,74 @@
+/* The agents' dining hall: a top-down room behind each project. Dimmed so text stays readable. */
+.hall { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.hall-cam {
+  position: absolute; left: 50%; top: 50%; width: 1200px; height: 700px; margin: -350px 0 0 -600px;
+  transform-origin: 50% 50%;
+  transition: transform 1400ms cubic-bezier(0.65, 0, 0.35, 1);
+  opacity: 0.55;
+}
+.hall-floor { position: absolute; left: -1200px; top: -700px; }
+.hall-props { position: absolute; inset: 0; overflow: visible; }
+
+/* scenery */
+.hall-table { fill: #2f3b58; stroke: #3d4a6a; stroke-width: 2; }
+.hall-table-ring { fill: none; stroke: rgb(0 0 0 / 0.22); stroke-width: 2; }
+.hall-chair { fill: #1e2840; stroke: rgb(0 0 0 / 0.35); }
+.hall-plate { fill: #edf0f6; stroke: rgb(0 0 0 / 0.3); }
+.hall-plate-in { fill: #b9c2d4; }
+.hall-mug { fill: #2a3552; stroke: #edf0f6; stroke-width: 1.6; }
+
+/* which tables are there */
+.hall-shared, .hall-five { transform-box: view-box; transform-origin: 600px 350px; transition: opacity 900ms ease, transform 1200ms cubic-bezier(0.65, 0, 0.35, 1); }
+.hall-five { opacity: 0; transform: scale(0.82); }
+.hall[data-mode="busy"] .hall-five { opacity: 1; transform: none; transition-delay: 500ms; }
+.hall[data-mode="busy"] .hall-shared { opacity: 0; transform: scale(0.82); }
+
+/* agents */
+.hall-agent {
+  position: absolute; left: 0; top: 0; width: 52px; height: 60px; margin: -30px 0 0 -26px;
+  transition: transform 1900ms cubic-bezier(0.45, 0, 0.25, 1);
+  will-change: transform;
+}
+.hall-trip, .hall-lean, .hall-bob { position: relative; width: 100%; height: 100%; }
+.hall-bob svg { display: block; overflow: visible; filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.4)); }
+
+/* quiet: lean in toward the table now and then, and pass a cup */
+.hall:not([data-mode="busy"]) .hall-lean { animation: hall-lean 9s ease-in-out calc(var(--i) * -2.3s) infinite; }
+@keyframes hall-lean {
+  0%, 62%, 100% { transform: none; }
+  70%, 84% { transform: translate(var(--lx), var(--ly)) rotate(2deg); }
+}
+.hall-cup-pass { animation: hall-cup 14s ease-in-out infinite alternate; }
+@keyframes hall-cup { 0%, 38% { transform: none; } 56%, 100% { transform: translate(var(--dx), var(--dy)); } }
+
+/* working at their own table: a small, steady bob */
+.hall-agent[data-working] .hall-bob { animation: hall-type 0.7s ease-in-out calc(var(--i) * -0.19s) infinite alternate; }
+@keyframes hall-type { from { transform: translateY(0); } to { transform: translateY(-1.5px) rotate(1deg); } }
+
+/* running, or walking after the room changes: bob and swing the legs */
+.hall[data-walk] .hall-bob, .hall-agent[data-run] .hall-bob { animation: hall-step 0.3s ease-in-out infinite alternate; }
+.hall[data-walk] .ag-foot-l, .hall-agent[data-run] .ag-foot-l { animation: hall-leg 0.3s ease-in-out infinite alternate; }
+.hall[data-walk] .ag-foot-r, .hall-agent[data-run] .ag-foot-r { animation: hall-leg 0.3s ease-in-out infinite alternate-reverse; }
+.hall[data-walk] .hall-lean { animation: none; }
+@keyframes hall-step { from { transform: translateY(0) rotate(-3deg); } to { transform: translateY(-4px) rotate(3deg); } }
+@keyframes hall-leg { from { transform: translateY(-2.4px) scaleX(1.25); } to { transform: translateY(2.4px) scaleX(0.8); } }
+
+/* talking: three dots over their heads */
+.hall-talk { position: absolute; left: 50%; top: -14px; translate: -50% 0; display: none; gap: 3px; padding: 4px 7px; border-radius: 9px; background: #edf0f6; box-shadow: 0 1px 0 rgb(0 0 0 / 0.4); }
+.hall-agent[data-talk] .hall-talk { display: flex; }
+.hall-talk i { width: 4px; height: 4px; border-radius: 50%; background: #131b2d; animation: hall-dot 0.9s ease-in-out infinite; }
+.hall-talk i:nth-child(2) { animation-delay: 0.15s; }
+.hall-talk i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes hall-dot { 0%, 100% { opacity: 0.3; } 40% { opacity: 1; } }
+
+/* keeps type readable: the room fades toward the text column */
+.hall-scrim { position: absolute; inset: 0; background: linear-gradient(90deg, rgb(17 24 39 / 0.86), rgb(17 24 39 / 0.3) 75%), linear-gradient(0deg, rgb(17 24 39 / 0.6), rgb(17 24 39 / 0) 55%), radial-gradient(120% 120% at 60% 50%, rgb(17 24 39 / 0) 55%, rgb(17 24 39 / 0.6)); }
+.hall:not([data-ready]) *, .hall:not([data-ready]) { transition: none !important; }
+.hall-caption { position: absolute; right: 18px; bottom: 14px; width: max-content; max-width: 34em; text-align: right; font-family: var(--f-label, "Courier New", monospace); font-size: 12.5px; line-height: 1.35; color: #e6ebf5; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hall-cam, .hall-agent, .hall-shared, .hall-five { transition: none; }
+  .hall *, .hall *::before { animation: none !important; }
+}
+.hall[data-reduced] .hall-cam, .hall[data-reduced] .hall-agent, .hall[data-reduced] .hall-shared, .hall[data-reduced] .hall-five { transition: none; }
+.hall[data-reduced] * { animation: none !important; }
