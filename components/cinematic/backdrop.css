@@ -1,0 +1,23 @@
+/* The desk is the same "Overhead lamp" as --desk-gradient in tokens.css. Every full-screen layer here is painted once; only opacity and
+   transform change while scrolling, so the compositor does the work. */
+.bd {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+  background: radial-gradient(60% 50% at 0% 0%, rgb(125 44 146 / 0.13), transparent 70%),
+    radial-gradient(90% 75% at 50% 0%, #1f2a48 0%, #152036 45%, #0f1626 75%, #0a0f1b 100%), #111827;
+}
+.bd-fields { position: absolute; inset: 0; }
+.bd-field { position: absolute; inset: -14%; animation: bd-orbit 110s ease-in-out infinite alternate; }
+.bd-field[data-still] { animation: none; }
+@keyframes bd-orbit { from { transform: translate(-6%, 4%); } 50% { transform: translate(5%, -5%); } to { transform: translate(-3%, -2%); } }
+/* settles the fields toward the desk at the edges, and a dark band under the text column on the left, so small type sits on near-desk colour */
+.bd-shade {
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, rgb(17 24 39 / 0.62), rgb(17 24 39 / 0) 50%),
+    radial-gradient(farthest-corner at 50% 50%, rgb(17 24 39 / 0) 35%, rgb(17 24 39 / 0.55));
+}
+.bd canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.bd-icon { position: absolute; }
+.bd-icons { position: absolute; inset: 0; }
+@keyframes bd-float { from { transform: translateY(-9px) rotate(-3deg); } to { transform: translateY(9px) rotate(3deg); } }
+.curtain { position: fixed; inset: 0; z-index: 80; pointer-events: all; will-change: clip-path, opacity; }
+@media (prefers-reduced-motion: reduce) { .bd-field { animation: none; } }

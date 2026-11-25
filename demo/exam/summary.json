@@ -1,0 +1,45 @@
+{
+  "title": "Final exam",
+  "date": "December 14",
+  "lengthMinutes": 120,
+  "totalMarks": 100,
+  "sections": [
+    {
+      "name": "Part I",
+      "format": "short_answer",
+      "count": 5,
+      "marksEach": 10,
+      "instructions": "Identify and explain 5 of 8 terms."
+    },
+    {
+      "name": "Part II",
+      "format": "essay",
+      "count": 1,
+      "marksEach": 50,
+      "instructions": "One essay, choice of two questions."
+    }
+  ],
+  "weeks": [
+    1,
+    2,
+    3
+  ],
+  "topics": [
+    "Federalist Nos. 1, 10 and 51"
+  ],
+  "markingGuide": "A term, full marks (10): a correct, precise definition in your own words; the paper it comes from; and one clear sentence on its significance, meaning how it moves Publius's argument forward. A definition alone earns at most 5.\n\nThe essay, full marks (50): a clear thesis that answers the question asked; accurate use of the papers with specific references; an explanation of the reasoning, not a summary of it; at least one weakness or objection considered and answered; and a conclusion that links back to the thesis. Essays that only retell the paper earn at most 25.",
+  "terms": [
+    "Faction",
+    "The large republic",
+    "Publius",
+    "Ambition must be made to counteract ambition",
+    "Separation of powers",
+    "Majority tyranny",
+    "Refining and enlarging the public views",
+    "Auxiliary precautions"
+  ],
+  "sampleQuestions": [
+    "Madison says the causes of faction cannot be removed, only its effects controlled. Explain his argument in Federalist No. 10 and assess whether the large republic is a convincing remedy.",
+    "\"If men were angels, no government would be necessary.\" Using Federalist No. 51, explain how the Constitution is meant to keep government in check without relying on the virtue of those who run it."
+  ]
+}

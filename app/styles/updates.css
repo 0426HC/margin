@@ -1,0 +1,118 @@
+/*
+ * Add files and Update from folder: one paper sheet on the desk with the "What's new" list.
+ * Calm on purpose: no motion beyond the dialog arriving. Focus is always a plum ring, on paper and on the desk.
+ */
+@layer components {
+  .upd.m-dialog { width: min(760px, calc(100vw - 32px)); }
+  .upd .m-dialog-body { gap: var(--space-4); padding: var(--space-5) var(--space-6) var(--space-5); }
+  .upd :is(button, select, input, [tabindex]):focus-visible { outline: 2px solid var(--plum-paper); outline-offset: 2px; border-radius: var(--radius-xs); }
+  .upd-lede { margin: 0; max-width: 60ch; font-size: var(--text-ui); line-height: 1.55; color: var(--ink); text-wrap: pretty; }
+  .upd-muted { color: var(--ink-muted); }
+  .upd-row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+  .upd-check { display: flex; align-items: center; gap: 8px; font-size: var(--text-small); color: var(--ink); }
+  .upd-check input, .upd-item input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--plum-paper); }
+
+  /* the week dropdown and the small selects */
+  .upd-select {
+    padding: 5px 28px 5px 9px; min-height: 30px; max-width: 100%;
+    background: var(--field-paper, rgb(19 27 45 / 0.06)) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%2348536d' stroke-width='1.5'/></svg>") no-repeat right 10px center;
+    color: var(--ink); border: 1px solid var(--paper-line); border-radius: var(--radius-sm); appearance: none;
+    font-family: var(--font-text); font-size: var(--text-small);
+  }
+  .upd-field { display: grid; gap: 6px; }
+  .upd-field > label { font-family: var(--font-display); font-size: var(--text-small); font-weight: 650; }
+  .upd-chosen { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; max-height: 180px; overflow: auto; font-family: var(--font-label); font-size: var(--text-label); color: var(--ink-muted); }
+
+  /* the review list */
+  .upd-summary { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0; font-family: var(--font-label); font-size: var(--text-label); color: var(--ink-muted); }
+  .upd-groups { display: grid; gap: var(--space-4); max-height: min(52dvh, 460px); overflow: auto; padding-right: 4px; margin-right: -4px; }
+  .upd-group h3 { margin: 0 0 6px; font-family: var(--font-display); font-size: var(--text-ui); font-weight: 650; letter-spacing: -0.005em; }
+  .upd-group h3 span { font-family: var(--font-label); font-weight: 400; font-size: var(--text-label); color: var(--ink-muted); margin-left: 6px; }
+  .upd-list { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--paper-line); }
+  .upd-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 9px 2px; border-bottom: 1px solid var(--paper-line); }
+  .upd-item[data-skipped] .upd-name { color: var(--ink-muted); text-decoration: line-through; text-decoration-color: var(--paper-line); }
+  .upd-name { min-width: 0; font-size: var(--text-small); line-height: 1.35; overflow-wrap: anywhere; }
+  .upd-name small { display: block; font-family: var(--font-label); font-size: var(--text-label); color: var(--ink-muted); overflow-wrap: anywhere; }
+  .upd-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+  .upd-note { grid-column: 2 / -1; margin: 0; font-family: var(--font-label); font-size: var(--text-label); line-height: 1.45; color: var(--ink-muted); }
+  .upd-note[data-bad] { color: var(--shaky-on-paper); }
+  .upd-after { display: grid; gap: var(--space-4); }
+  .upd-after h3 { margin: 0 0 6px; font-family: var(--font-display); font-size: var(--text-ui); font-weight: 650; }
+  .upd-plain { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: var(--text-small); line-height: 1.45; }
+  .upd-plain li small { display: block; font-family: var(--font-label); font-size: var(--text-label); color: var(--ink-muted); }
+  .upd-layer { display: grid; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--paper-line); }
+  .upd-layer:first-of-type { border-top: 1px solid var(--paper-line); }
+  .upd-layer .m-input { background: rgb(19 27 45 / 0.05); color: var(--ink); border-color: var(--paper-line); }
+  .upd-layer .m-input:focus-visible { outline: 2px solid var(--plum-paper); outline-offset: 1px; }
+  .upd-progress { margin: 0; font-family: var(--font-label); font-size: var(--text-label); color: var(--ink-muted); }
+  .upd-bar { height: 3px; background: rgb(19 27 45 / 0.1); border-radius: 2px; overflow: hidden; }
+  .upd-bar > i { display: block; height: 100%; background: var(--plum-paper); transform-origin: left; transition: transform 200ms var(--ease-out); }
+
+  /* "New material since you saved": the banner on a layer and the small mark in the layer list */
+  .m-fresh { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0 0 var(--space-4); padding: 10px 14px; border: 1px solid var(--plum-paper); border-radius: var(--radius-sm); font-size: var(--text-small); line-height: 1.45; color: var(--ink); }
+  .m-fresh p { margin: 0; flex: 1 1 24ch; }
+  .m-fresh b { font-weight: 650; }
+  .m-fresh .m-btn:focus-visible, .m-fresh a:focus-visible { outline: 2px solid var(--plum-paper); outline-offset: 2px; }
+  .m-sec-fresh { margin-left: auto; flex: none; align-self: center; font-family: var(--font-label); font-size: var(--text-label); color: var(--plum); }
+}
+
+/* the two new buttons in the overview's top bar. Outside any layer, like the rest of the overview's own controls. */
+.ov-actions { display: inline-flex; align-items: center; gap: 10px; margin-left: auto; flex-shrink: 0; }
+.ov-actions .ov-continue { margin-left: 0; }
+.ov-ghost {
+  padding: 6px 12px; border: 1px solid rgb(230 235 245 / 0.34); border-radius: 6px; background: transparent; color: var(--lamp, #e6ebf5);
+  font-family: var(--f-display); font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: transform 140ms var(--ease), background-color 140ms ease;
+}
+.ov-ghost:active { transform: scale(0.97); }
+@media (hover: hover) and (pointer: fine) { .ov-ghost:hover { background: rgb(230 235 245 / 0.1); } }
+.ov .ov-ghost:focus-visible, .ov .ov-actions .ov-continue:focus-visible { outline: 2px solid var(--plum, #d38ae0); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .ov-ghost { transition: none; } }
+@media (max-width: 1200px) {
+  .ov-actions { gap: 8px; min-width: 0; }
+  .ov-actions .ov-ghost { padding-inline: 9px; font-size: 13px; white-space: nowrap; }
+  .ov-actions .ov-continue { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ov-bar-course { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
+/* The agents' note button, under their table on the overview's first scene, and the side panel it opens. */
+.ov .ov-intro-in > .ov-agents-cta { position: absolute; z-index: 4; right: max(72px, 6.4vw); bottom: 9vh; display: grid; justify-items: center; gap: 8px; }
+.ov-agents-link { background: none; border: 0; padding: 2px 4px; color: var(--dim, #97a3bd); font-family: var(--f-label); font-size: 13px; text-decoration: underline; text-decoration-color: rgb(230 235 245 / 0.3); text-underline-offset: 4px; cursor: pointer; }
+@media (hover: hover) and (pointer: fine) { .ov-agents-link:hover { color: var(--lamp, #e6ebf5); text-decoration-color: currentColor; } }
+.ov .ov-agents-link:focus-visible { outline: 2px solid var(--plum, #d38ae0); outline-offset: 2px; }
+@media (max-width: 860px) { .ov .ov-intro-in > .ov-agents-cta { right: auto; left: 24px; bottom: 6vh; justify-items: start; } }
+
+@layer components {
+  .ap { position: fixed; inset: 0 0 0 auto; margin: 0; width: min(540px, 100vw); max-width: none; height: 100dvh; max-height: none; padding: 0; border: 0; border-radius: 0; color: var(--ink); background: var(--paper); box-shadow: -24px 0 60px -20px rgb(0 0 0 / 0.6); overflow: auto; transform: none; opacity: 1; transition: transform 260ms var(--ease-out), opacity 200ms var(--ease-out); }
+  @starting-style { .ap[open] { transform: translateX(32px); opacity: 0; } }
+  .ap::backdrop { background: rgb(10 15 27 / 0.5); }
+  .ap :is(a, button, input, select, textarea, [tabindex]):focus-visible { outline: 2px solid var(--plum-paper); outline-offset: 2px; border-radius: var(--radius-xs); }
+  .ap-in { display: grid; gap: var(--space-4); align-content: start; padding: var(--space-5) var(--space-5) var(--space-6); }
+  .ap-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .ap-head h2 { margin: 0; }
+  .ap-body { display: grid; gap: var(--space-3); align-content: start; }
+  .ap-lede { margin: 0; font-size: var(--text-ui); line-height: 1.55; text-wrap: pretty; color: var(--ink); }
+  .ap-label { font-family: var(--font-display); font-weight: 650; font-size: var(--text-small); }
+  .ap-text { width: 100%; padding: 10px 12px; background: rgb(19 27 45 / 0.05); color: var(--ink); border: 1px solid var(--paper-line); border-radius: var(--radius-sm); font-family: var(--font-text); font-size: var(--text-ui); line-height: 1.5; resize: vertical; }
+  .ap-hint { margin: 4px 0 0; font-family: var(--font-label); font-size: var(--text-label); color: var(--ink-muted); }
+  .ap-suggest { display: grid; gap: 6px; }
+  .ap-chip { padding: 8px 10px; border: 1px solid var(--paper-line); border-radius: var(--radius-sm); background: transparent; color: var(--ink); font-family: var(--font-text); font-size: var(--text-small); line-height: 1.4; text-align: left; cursor: pointer; transition: transform 140ms var(--ease-out); }
+  .ap-chip:active { transform: scale(0.98); }
+  @media (hover: hover) and (pointer: fine) { .ap-chip:hover { background: rgb(19 27 45 / 0.06); } }
+  .ap-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+  .ap-left, .ap-meta { font-family: var(--font-label); font-size: var(--text-label); color: var(--ink-muted); }
+  .ap-meta { margin: 0; }
+  .ap-sent, .ap-working { margin: 0; padding: 10px 12px; border: 1px solid var(--plum-paper); border-radius: var(--radius-sm); font-size: var(--text-small); line-height: 1.5; }
+  .ap-notice { display: grid; gap: 8px; justify-items: start; padding: 10px 12px; border: 1px solid var(--paper-line); border-radius: var(--radius-sm); font-size: var(--text-small); line-height: 1.5; }
+  .ap-notice p { margin: 0; }
+  .ap-list { margin: 0; padding: 0; list-style: none; display: grid; border-top: 1px solid var(--paper-line); }
+  .ap-list li { display: grid; gap: 4px; padding: 14px 0; border-bottom: 1px solid var(--paper-line); }
+  .ap-title { margin: 0; font-family: var(--font-display); font-weight: 650; font-size: var(--text-ui); }
+  .ap-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; }
+  .ap-doc-title { margin: 12px 0 4px; font-family: var(--font-display); font-size: var(--text-h3); line-height: 1.2; font-weight: 650; }
+  .ap-doc h4 { margin: 1.2em 0 0.3em; font-family: var(--font-display); font-size: var(--text-ui); font-weight: 650; }
+  .ap-doc p, .ap-doc li { font-size: var(--text-ui); line-height: 1.6; margin: 0 0 0.6em; }
+  .ap-doc ul { padding-left: 1.2em; list-style: disc; }
+  .ap-cite { font-family: var(--font-label); font-size: 0.85em; color: var(--ink-muted); }
+}
+@media (prefers-reduced-motion: reduce) { .ap { transition: opacity 200ms ease; } @starting-style { .ap[open] { transform: none; } } .ap-chip { transition: none; } }

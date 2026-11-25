@@ -1,0 +1,45 @@
+.claude/skills/
+.data/
+# backups of the real data folder (and the copy kept by a restore): never committed
+.data-*/
+node_modules/
+.next/
+.next-*/
+.DS_Store
+*.tsbuildinfo
+next-env.d.ts
+test-results/
+playwright-report/
+
+# audio files are private and never committed
+*.wav
+*.mp3
+*.m4a
+*.flac
+
+# secrets and local environment files
+.env*
+
+# local scratch and private material
+shots/
+.claude/
+docs/screens/
+
+# more audio
+*.ogg
+*.aiff
+
+# course files stay private: PDF, Word and PowerPoint are ignored everywhere except the public-domain demo and the test fixtures
+*.pdf
+*.doc
+*.docx
+*.ppt
+*.pptx
+!/demo/**
+!/tests/fixtures/**
+
+# the Mac app: release builds, logs and generated launcher (scripts/mac)
+.mac-app/
+
+# private notes for the owner: never committed or pushed
+private/

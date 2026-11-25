@@ -1,0 +1,71 @@
+@import "tailwindcss";
+@import "./styles/fonts.css";
+@import "./styles/tokens.css";
+@import "./styles/surfaces.css";
+@import "./styles/ui.css";
+@import "./styles/reading.css";
+@import "./styles/agents.css";
+@import "./styles/import.css";
+@import "./styles/setup.css";
+@import "./styles/talk.css";
+@import "./styles/updates.css";
+@import "./styles/weeks.css";
+@import "./styles/lecture.css";
+@import "./styles/exam.css";
+@import "./styles/lockin.css";
+
+/* Tokens as Tailwind utilities: bg-desk, text-ink, font-display, rounded-margin ... */
+@theme inline {
+  --color-desk: var(--desk);
+  --color-desk-hi: var(--desk-hi);
+  --color-panel: var(--panel);
+  --color-panel-ink: var(--panel-ink);
+  --color-panel-muted: var(--panel-muted);
+  --color-field: var(--field);
+  --color-paper: var(--paper);
+  --color-paper-edge: var(--paper-edge);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-accent: var(--accent);
+  --color-solid: var(--solid);
+  --color-shaky: var(--shaky);
+  --radius-margin: var(--radius);
+  --ease-margin: var(--ease-out);
+}
+
+html {
+  background: var(--desk);
+  color: var(--panel-ink);
+  font-family: var(--font-text);
+  -webkit-font-smoothing: antialiased;
+}
+body {
+  margin: 0;
+  min-height: 100dvh;
+}
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+/*
+ * Places to type (text fields, text areas, the notepads' editable pages): clicking or tapping in shows no outline or frame at all, in both
+ * modes. Only when one is reached with the keyboard does a thin plum edge show. Browsers count every focus on a text field as
+ * :focus-visible, so the keyboard is told apart by a script: <html data-keyboard> after Tab, removed again on any pointer press
+ * (components/ui/FocusModality.tsx). !important, because each section sets its own focus ring for its controls.
+ */
+:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="button"], [type="submit"], [type="reset"], [type="file"], [type="color"], [type="image"]), textarea, [contenteditable]:not([contenteditable="false"])):focus {
+  outline: none !important;
+}
+html[data-keyboard] :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="button"], [type="submit"], [type="reset"], [type="file"], [type="color"], [type="image"]), textarea, [contenteditable]:not([contenteditable="false"])):focus-visible {
+  outline: 1px solid #6b2c7e !important;
+  outline-offset: 2px !important;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

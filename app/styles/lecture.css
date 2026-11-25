@@ -1,0 +1,22 @@
+/* The Lecture tab: numbers counted by code, the prose written from them, and the student's own class notes. Paper, quiet, no motion of its own. */
+@layer components {
+  .m-lecture h3 { margin: 1.6em 0 0.4em; font-family: var(--font-display); font-size: var(--text-h3); line-height: 1.2; font-weight: 650; letter-spacing: -0.015em; }
+  .m-lec-facts { display: grid; gap: 10px; margin: 0; }
+  .m-lec-facts > div { display: grid; grid-template-columns: 9.5em minmax(0, 1fr); gap: 4px 14px; align-items: baseline; }
+  .m-lec-facts dt { font-family: var(--font-label); font-size: var(--text-label); color: var(--ink-muted); }
+  .m-lec-facts dd { margin: 0; font-size: var(--text-ui); line-height: 1.55; }
+  .m-lec-item { display: inline; }
+  .m-lec-item b { font-weight: 650; }
+  .m-lecture p.m-lec-note, .m-lec-note { margin: 10px 0 0; font-family: var(--font-label); font-size: var(--text-label); line-height: 1.5; color: var(--ink-muted); max-width: 62ch; }
+  .m-lecture p.m-lec-none, .m-lec-none { margin: 0; font-size: var(--text-ui); line-height: 1.55; color: var(--ink-muted); }
+  .m-lec-none a { text-decoration: underline; text-underline-offset: 3px; }
+  .m-lec-none a:focus-visible, .m-lecture .m-cite-inline:focus-visible { outline: 2px solid var(--plum-paper); outline-offset: 2px; border-radius: var(--radius-xs); }
+  /* the student's own words: set apart by a plum rule, so they are never mistaken for the lecture or the professor */
+  .m-lec-own { margin: 6px 0 0; padding: 0 0 0 14px; list-style: none; border-left: 2px solid var(--plum-paper); display: grid; gap: 6px; }
+  .m-lecture .m-lec-own li, .m-lec-own li { font-size: var(--text-ui); line-height: 1.55; }
+  .m-lecture .m-lec-checks, .m-lec-checks { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; font-size: var(--text-ui); line-height: 1.55; }
+  .m-lec-empty { display: grid; gap: 10px; justify-items: start; max-width: 56ch; padding-top: 6px; }
+  .m-lec-empty h3 { margin: 0; }
+  .m-lec-empty p { margin: 0; font-size: var(--text-ui); line-height: 1.55; color: var(--ink-muted); text-wrap: pretty; }
+  .m-lec-empty .m-btn:focus-visible { outline: 2px solid var(--plum-paper); outline-offset: 2px; }
+}

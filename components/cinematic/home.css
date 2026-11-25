@@ -1,0 +1,141 @@
+/* Landing page. Same palette, type and motion language as the overview. */
+.ho-main { position: relative; z-index: 1; }
+
+.ho-hero { position: relative; height: 100vh; }
+.ho-hero-in {
+  position: sticky; top: 0; height: 100vh;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  padding: 0 clamp(72px, 6.4vw, 112px) 11vh;
+  transform-origin: 24% 62%;
+}
+.ho-word {
+  margin: 0;
+  font-family: var(--f-display); font-weight: 650;
+  font-size: clamp(110px, 21vw, 360px); line-height: 0.82; letter-spacing: -0.06em;
+  transform-origin: 0 100%;
+  animation: ho-push 1250ms var(--ease) both;
+}
+@keyframes ho-push { from { opacity: 0; transform: translateY(60px) scale(2.4); } }
+.ho-ink { margin-top: 8vh; max-width: 34em; font-size: clamp(19px, 1.65vw, 25px); line-height: 1.55; text-wrap: pretty; }
+/* entrances whose resting state is visible: the keyframes only add the way in (backwards fill covers each delay) */
+.ho-ink-w { animation: ho-ink 700ms var(--ease) backwards; }
+@keyframes ho-ink { from { opacity: 0.07; } }
+.ho-greet { margin: 22px 0 0; font-family: var(--f-label); font-size: 14px; color: var(--dim); animation: ho-fade 800ms ease backwards; }
+@keyframes ho-fade { from { opacity: 0; } }
+
+/* projects */
+.ho-projects { min-height: 100vh; padding: 12vh clamp(72px, 6.4vw, 112px) 14vh; }
+.ho-projects-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 26px; }
+.ho-projects-head h2 { font-family: var(--f-display); font-size: 28px; font-weight: 650; letter-spacing: -0.02em; }
+.ho-projects-head p { display: flex; gap: 22px; font-family: var(--f-label); font-size: 14px; color: var(--dim); }
+.ho-projects-head button { text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 5px; }
+@media (hover: hover) and (pointer: fine) { .ho-projects-head button:hover { color: var(--lamp); text-decoration-color: currentColor; } }
+
+/* Every card is the same size: a new project takes the next slot and the grid reflows. */
+.ho-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); grid-auto-rows: 340px; gap: 20px; }
+
+.ho-tile {
+  --mx: 0; --my: 0;
+  position: relative; overflow: hidden; isolation: isolate;
+  display: flex; flex-direction: column; justify-content: space-between;
+  padding: 24px 26px 22px;
+  border-radius: 8px;
+  background: radial-gradient(120% 100% at 28% 0%, var(--wash), rgb(17 24 39 / 0) 70%), rgb(22 31 49 / 0.9);
+  box-shadow: inset 0 1px 0 rgb(230 235 245 / 0.16), 0 0 0 1px rgb(230 235 245 / 0.14), 0 18px 40px -16px rgb(0 0 0 / 0.6);
+  transition: transform 260ms var(--ease), box-shadow 260ms var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .ho-tile:hover { transform: translateY(-6px); box-shadow: inset 0 1px 0 rgb(230 235 245 / 0.26), 0 0 0 1px var(--unit), 0 28px 50px -14px rgb(0 0 0 / 0.7); }
+}
+.ho-hall { position: absolute; inset: 0; z-index: -1; }
+.ho-tile { justify-content: flex-end; }
+.ho-tile-body { display: flex; flex-direction: column; gap: 10px; max-width: 30em; min-width: 0; }
+.ho-code { display: flex; align-items: center; gap: 12px; font-family: var(--f-label); font-size: 14px; color: var(--dim); }
+.ho-example { padding: 1px 7px; border: 1px solid var(--line-strong); border-radius: 3px; font-size: 12px; color: var(--lamp); }
+.ho-tile h3 { font-family: var(--f-display); font-weight: 650; letter-spacing: -0.03em; line-height: 1.05; font-size: clamp(26px, 2.1vw, 32px); text-wrap: balance; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.ho-open { text-align: left; }
+.ho-open::after { content: ""; position: absolute; inset: 0; z-index: 1; }
+.ho-open:focus-visible { outline: none; }
+.ho-tile:has(.ho-open:focus-visible) { outline: 2px solid var(--lamp); outline-offset: 3px; }
+
+.ho-progress { max-width: 340px; }
+.ho-tile .ov-cell { background-color: transparent; }
+.ho-tile .ov-cell[data-status="solid"] { background: var(--unit); }
+.ho-tile .ov-counts { margin-top: 8px; }
+
+
+.ho-tile {
+  --mx: 0; --my: 0;
+  position: relative; overflow: hidden; isolation: isolate;
+  display: flex; flex-direction: column; justify-content: space-between;
+  padding: 24px 26px 22px;
+  border-radius: 8px;
+  background: radial-gradient(120% 100% at 28% 0%, var(--wash), rgb(17 24 39 / 0) 70%), rgb(22 31 49 / 0.9);
+  box-shadow: inset 0 1px 0 rgb(230 235 245 / 0.16), 0 0 0 1px rgb(230 235 245 / 0.14), 0 18px 40px -16px rgb(0 0 0 / 0.6);
+  transition: transform 260ms var(--ease), box-shadow 260ms var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .ho-tile:hover { transform: translateY(-6px); box-shadow: inset 0 1px 0 rgb(230 235 245 / 0.26), 0 0 0 1px var(--unit), 0 28px 50px -14px rgb(0 0 0 / 0.7); }
+}
+.ho-hall { position: absolute; inset: 0; z-index: -1; }
+.ho-tile { justify-content: flex-end; }
+.ho-tile-body { display: flex; flex-direction: column; gap: 10px; max-width: 30em; min-width: 0; }
+.ho-code { display: flex; align-items: center; gap: 12px; font-family: var(--f-label); font-size: 14px; color: var(--dim); }
+.ho-example { padding: 1px 7px; border: 1px solid var(--line-strong); border-radius: 3px; font-size: 12px; color: var(--lamp); }
+.ho-tile h3 { font-family: var(--f-display); font-weight: 650; letter-spacing: -0.03em; line-height: 1.05; font-size: clamp(26px, 2.1vw, 32px); text-wrap: balance; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.ho-open { text-align: left; }
+.ho-open::after { content: ""; position: absolute; inset: 0; z-index: 1; }
+.ho-open:focus-visible { outline: none; }
+.ho-tile:has(.ho-open:focus-visible) { outline: 2px solid var(--lamp); outline-offset: 3px; }
+
+.ho-progress { max-width: 340px; }
+.ho-tile .ov-cell { background-color: transparent; }
+.ho-tile .ov-cell[data-status="solid"] { background: var(--unit); }
+.ho-tile .ov-counts { margin-top: 8px; }
+.ho-resume { margin-top: 2px; font-size: 14.5px; line-height: 1.45; color: var(--lamp); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ho-tile:hover 
+
+.ho-new { flex-direction: column; align-items: flex-start; justify-content: flex-end; gap: 18px; background: rgb(22 31 49 / 0.55); box-shadow: 0 0 0 1px var(--line-strong); }
+.ho-new h3 { font-size: clamp(26px, 2.1vw, 32px); }
+.ho-new p { margin-top: 6px; max-width: 46em; font-size: 15px; line-height: 1.5; color: var(--dim); }
+.ho-new-mark { flex: none; width: 52px; height: 52px; color: var(--lamp); }
+@media (hover: hover) and (pointer: fine) { .ho-new:hover { box-shadow: 0 0 0 1px var(--lamp), 0 28px 50px -14px rgb(0 0 0 / 0.7); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ho-word, .ho-ink-w, .ho-greet { animation: none; opacity: 1; }
+  .ho-tile { transition: none; }
+}
+.ho-hall .hall-scrim { background: linear-gradient(90deg, rgb(22 31 49 / 0.93), rgb(22 31 49 / 0.4) 70%), radial-gradient(120% 120% at 60% 50%, rgb(22 31 49 / 0) 55%, rgb(22 31 49 / 0.5)); }
+
+.ho-tile .ov-cell[data-status="good"] { background: linear-gradient(90deg, var(--unit) 50%, transparent 50%); box-shadow: inset 0 0 0 1px var(--unit); }
+.ho-error { margin-top: 8px; font-size: 14px; color: var(--lamp); }
+.ho-hall .hall-caption { display: none; }
+/* the agents' table sits in the top-right of every card at one scale, clear of the title */
+.ho-tile .ho-hall {
+  inset: 0 0 54% 40%;
+  -webkit-mask-image: radial-gradient(closest-side at 55% 52%, #000 62%, transparent 100%);
+  mask-image: radial-gradient(closest-side at 55% 52%, #000 62%, transparent 100%);
+}
+.ho-tile .ho-hall .hall-scrim { display: none; }
+
+/* the "..." menu on a project card: quiet until the card is hovered or something in it has focus */
+.ho-more { position: absolute; top: 12px; right: 12px; z-index: 4; color: var(--lamp, #e6ebf5); opacity: 0; }
+.ho-tile:hover .ho-more, .ho-tile:focus-within .ho-more, .ho-more[aria-expanded="true"] { opacity: 1; }
+@media (hover: none) { .ho-more { opacity: 0.7; } }
+
+/* the top bar: the Lock in switch on the right (and, in lock in, the wordmark on the left). It scrolls away with the page. */
+.ho-bar { position: absolute; inset: 0 0 auto 0; z-index: 20; display: flex; align-items: center; gap: 18px; height: 56px; padding: 0 24px; }
+.ho-bar > .lk-controls { margin-left: auto; }
+
+/* a course left part-way through setting up: plain words, then its two actions above the card's own link */
+.ho-draft { font-family: var(--f-label); font-size: 14px; color: var(--lamp); }
+.ho-draft-actions { position: relative; z-index: 2; display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+.ho-draft-btn { min-height: 34px; padding: 6px 14px; border-radius: 6px; border: 1px solid var(--lamp); background: var(--lamp); color: var(--desk, #111827); font-family: var(--f-display, inherit); font-size: 14.5px; font-weight: 600; cursor: pointer; }
+.ho-draft-btn.quiet { background: transparent; color: var(--lamp); border-color: var(--line-strong); }
+.ho-draft-btn:focus-visible { outline: 2px solid var(--lamp); outline-offset: 3px; }
+@media (hover: hover) and (pointer: fine) { .ho-draft-btn.quiet:hover { border-color: var(--lamp); } .ho-draft-btn:not(.quiet):hover { filter: brightness(1.06); } }
+
+/* where the course is: "Week 3 of 11 · 5/14 layers saved", then one bar over the whole course */
+.ho-week { margin-top: 10px; display: grid; gap: 8px; max-width: 340px; }
+.ho-week-line { font-family: var(--f-label); font-size: 14px; color: var(--lamp); }
+.ho-week .ov-bar { max-width: none; }

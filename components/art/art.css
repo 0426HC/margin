@@ -1,0 +1,114 @@
+/*
+ * The scene illustrations: isometric, flat shapes, no outline heavier than 1px, a soft shadow underneath (a radial gradient, never a blur
+ * filter). Porcelain sheets and the Margin palette; the wooden desk and the pencil are the only warm colours, because they are
+ * illustrations, not interface. Only the Margin hero (and what it carries) and the typing dots move, with transform and opacity, only while
+ * their scene is on screen, and not under reduced motion.
+ */
+.art-svg { display: block; width: 100%; height: auto; overflow: visible; }
+
+/* ---------- the Margin hero (Hero.tsx) ---------- */
+.hero, .hero [data-part] { transform-box: view-box; transform-origin: 0 0; }
+.hero-body { fill: #d38ae0; }
+.hero-stripe { fill: #b169c2; opacity: 0.55; }
+.hero-eye { fill: #ffffff; }
+.hero-pupil { fill: #131b2d; }
+.hero-shadow { fill: rgb(10 15 27 / 0.42); }
+.hero-dot { animation: hero-dot 1.2s ease-in-out infinite; }
+.hero-dot:nth-child(2) { animation-delay: 0.15s; }
+.hero-dot:nth-child(3) { animation-delay: 0.3s; }
+@keyframes hero-dot { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+
+/* ---------- Lecture notes: scroll on the sheets to pick a week ---------- */
+.art-weeks { display: flex; align-items: center; justify-content: center; gap: clamp(8px, 1.6vw, 28px); width: 100%; }
+.art-weeks-sheets { flex: 0 1 560px; min-width: 0; border-radius: 8px; outline-offset: 6px; }
+.art-weeks-sheets .art-svg { max-height: 62vh; }
+.art-week { cursor: pointer; }
+.art-week-face { fill: #cfd5e1; stroke: rgb(19 27 45 / 0.35); stroke-width: 0.5; }
+.art-week-edge { fill: #aab3c5; }
+.art-week-top { fill: #e6eaf1; }
+.art-week[data-near] .art-week-face { fill: #fbfcfe; }
+.art-week[data-near] .art-week-top { fill: #ffffff; }
+.art-week-tab { fill: #7d2c92; }
+.art-week-tab[data-near] { fill: #d38ae0; }
+.art-weeks-now { flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 15ch; }
+/* the odometer: every week number in one column, moved by transform; the box shows exactly one number's height */
+.art-weeks-num { display: block; height: 0.9em; overflow: hidden; font-family: var(--f-display, var(--font-display)); font-size: clamp(120px, 14vw, 220px); font-weight: 650; line-height: 0.9; letter-spacing: -0.05em; color: var(--lamp, #e6ebf5); font-variant-numeric: tabular-nums; }
+.art-weeks-roll { display: flex; flex-direction: column; }
+.art-weeks-roll > span { display: block; height: 0.9em; }
+.art-weeks-when { font-family: var(--f-label, var(--font-label)); font-size: 14px; color: var(--dim, #97a3bd); }
+.art-weeks-has { font-family: var(--f-label, var(--font-label)); font-size: 14px; color: #d38ae0; }
+.art-weeks-none { font-family: var(--f-label, var(--font-label)); font-size: 14px; color: var(--dim, #97a3bd); }
+.art-weeks-hint { margin-top: 14px; max-width: 30ch; font-family: var(--f-label, var(--font-label)); font-size: 12.5px; line-height: 1.5; color: var(--dim, #97a3bd); }
+
+/* ---------- Let's talk!: the laptop ---------- */
+.art-lap-top { fill: #e3e7ee; }
+.art-lap-front { fill: #b8c0ce; }
+.art-lap-side { fill: #cbd1dc; }
+.art-key-well { fill: #cfd5df; }
+.art-key { fill: #f6f7fa; }
+.art-pad { fill: #d6dbe4; stroke: rgb(19 27 45 / 0.12); stroke-width: 0.6; }
+.art-lid { fill: #dfe3ea; }
+.art-bezel { fill: #131b2d; }
+.art-scr-paper { fill: #edf0f6; }
+.art-scr-bar { fill: #111827; }
+.art-scr-brand { font-family: var(--font-display); font-weight: 700; font-size: 9px; fill: #e6ebf5; }
+.art-scr-course { font-family: var(--font-label); font-size: 6.5px; fill: #97a3bd; }
+.art-scr-title { font-family: var(--font-display); font-weight: 650; font-size: 17px; letter-spacing: -0.03em; fill: #131b2d; }
+.art-scr-tab { font-family: var(--font-display); font-weight: 600; font-size: 7px; fill: #48536d; }
+.art-scr-tab-on { fill: #233f8f; }
+.art-scr-tab.art-scr-tab-label-on { fill: #f3f6fc; }
+.art-scr-rule { stroke: rgb(19 27 45 / 0.14); stroke-width: 0.8; }
+.art-scr-you { fill: #233f8f; }
+.art-scr-msg { font-family: var(--font-text); font-size: 8px; fill: #ffffff; }
+.art-scr-prof { fill: #ffffff; stroke: rgb(19 27 45 / 0.14); stroke-width: 0.8; }
+.art-scr-input { fill: #f8f9fc; stroke: rgb(19 27 45 / 0.22); stroke-width: 0.8; }
+.art-scr-ph { font-family: var(--font-text); font-size: 7.5px; fill: #48536d; }
+.art-dot { fill: #8e98ad; opacity: 0.45; transform-box: fill-box; transform-origin: center; animation: art-typing 1.4s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+.art-dot:nth-child(2) { animation-delay: 0.2s; }
+.art-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes art-typing {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.45; }
+  30% { transform: translateY(-2.6px); opacity: 1; }
+}
+
+/* ---------- the exam room ---------- */
+.art-wood-top { fill: #c08f5e; }
+.art-wood-front { fill: #a77649; }
+.art-wood-side { fill: #93653d; }
+.art-grain path { fill: none; stroke: #a87849; stroke-width: 0.8; opacity: 0.55; }
+.art-paper { fill: #f9fafd; }
+.art-paper-shadow { fill: rgb(19 27 45 / 0.22); }
+.art-paper-title { fill: #131b2d; }
+.art-paper-line { fill: #a3abbc; }
+.art-paper-rule { fill: rgb(19 27 45 / 0.12); }
+.art-paper-writing { fill: #8e98ad; transform-box: fill-box; transform-origin: 0 50%; }
+.hero-pencil { transform-box: view-box; transform-origin: 0 0; }
+.art-pencil { fill: #f2c14e; }
+.art-pencil-shade { fill: #d9a531; }
+.art-pencil-wood { fill: #ecd2a6; }
+.art-pencil-lead { fill: #3b4150; }
+.art-pencil-ferrule { fill: #b9c0cc; }
+.art-pencil-eraser { fill: #f09ab3; }
+.art-callout-line { fill: none; stroke: currentColor; stroke-width: 0.8; opacity: 0.55; }
+.art-callout-dot { fill: currentColor; }
+.art-callout-text { font-family: var(--font-label); font-size: 13px; fill: currentColor; }
+
+/* ---------- Note to Self ---------- */
+.art-nb-cover { fill: #1f2d5a; }
+.art-nb-cover-edge { fill: #16203f; }
+.art-nb-cover-side { fill: #1a264b; }
+.art-nb-edge { fill: #c7cddb; }
+.art-nb-edge-side { fill: #d6dbe5; }
+.art-nb-page { fill: #edf0f6; }
+.art-nb-right { fill: #f4f6fa; }
+.art-nb-margin { fill: #7d2c92; opacity: 0.7; }
+.art-nb-ink, .art-nb-ink rect { fill: rgb(19 27 45 / 0.32); }
+.art-nb-line { fill: #8e98ad; transform-box: fill-box; transform-origin: 0 50%; }
+.art-nb-rule rect { fill: rgb(35 63 143 / 0.16); }
+.art-nb-ribbon { fill: #7d2c92; }
+
+/* on the overview, a scene's loops pause while it is off screen, so a resting page costs nothing */
+.ov-free:not([data-live]) :is(.art-dot, .hero-dot) { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .art-dot, .hero-dot { animation: none; }
+}

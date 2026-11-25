@@ -1,0 +1,40 @@
+/*
+ * Lecture notes: a rolling counter (like an odometer) that scrolls from week 1 to the last week, then one notepad page per week.
+ * The only motion is the counter's roll, which follows the scroll; transform and opacity only.
+ */
+@layer components {
+  .wk { flex-direction: column; }
+  .wk :is(a, button, select, input, [tabindex]):focus-visible { outline: 2px solid var(--plum-paper); outline-offset: 3px; border-radius: var(--radius-xs); }
+
+  /* the counter: a tall scroll track with one sticky stage */
+  .wk-scroll { flex: 1; min-height: 0; position: relative; overflow-y: auto; overscroll-behavior: contain; }
+  .wk-stage { position: sticky; top: 0; display: grid; place-items: center; align-content: center; gap: clamp(14px, 3vh, 28px); text-align: center; padding: 24px; }
+  .wk-window { position: relative; overflow: hidden; width: min(100%, 520px); display: grid; place-items: center; -webkit-mask-image: linear-gradient(to bottom, transparent, #000 28%, #000 72%, transparent); mask-image: linear-gradient(to bottom, transparent, #000 28%, #000 72%, transparent); }
+  .wk-strip { position: absolute; inset: 0 0 auto 0; will-change: transform; }
+  .wk-cell { display: grid; place-items: center; font-family: var(--font-display); font-weight: 650; letter-spacing: -0.045em; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .wk-open { position: absolute; inset: 0; z-index: 1; border-radius: var(--radius); }
+  .wk-open:focus-visible { outline: 2px solid var(--plum-paper); outline-offset: -2px; }
+  .wk-caption { display: grid; gap: 6px; justify-items: center; min-height: 4.2em; }
+  .wk-week { margin: 0; font-family: var(--font-display); font-size: var(--text-h3); font-weight: 650; letter-spacing: -0.01em; }
+  .wk-date { margin: 0; font-family: var(--font-label); font-size: var(--text-ui); color: var(--ink-muted); min-height: 1.4em; }
+  .wk-status { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-family: var(--font-label); font-size: var(--text-label); color: var(--ink-muted); }
+  .wk-status[data-notes] { color: var(--plum-paper); }
+  .wk-step { display: flex; gap: 10px; }
+  .wk-hint { margin: 0; font-size: var(--text-small); color: var(--ink-muted); }
+
+  /* the plain page used when motion is reduced: a list of the weeks */
+  .wk-list { margin: 0; padding: 12px clamp(24px, 3.4vw, 48px) 48px; list-style: none; display: grid; max-width: 640px; }
+  .wk-list a { display: grid; grid-template-columns: 5.2em minmax(0, 1fr) auto; align-items: baseline; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--paper-line); color: var(--ink); text-decoration: none; }
+  .wk-list a b { font-family: var(--font-display); font-weight: 650; }
+  .wk-list a span { font-family: var(--font-label); font-size: var(--text-label); color: var(--ink-muted); }
+  .wk-list a span[data-notes] { color: var(--plum-paper); }
+  @media (hover: hover) and (pointer: fine) { .wk-list a:hover { background: rgb(19 27 45 / 0.05); } }
+
+  /* the week page: tabs along the top, then the notepad */
+  .wk-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 12px clamp(24px, 3.4vw, 48px) 0; }
+  .wk-tabs { flex: 1 1 320px; min-width: 0; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+  .wk-tabs .m-seg { flex-wrap: nowrap; }
+  .wk-tabs .m-seg-btn { white-space: nowrap; padding-inline: 12px; }
+  .wk-tabs .m-seg-btn:focus-visible { outline: 2px solid var(--plum-paper); outline-offset: 1px; }
+}
+@media (prefers-reduced-motion: reduce) { .wk-strip { will-change: auto; } }
