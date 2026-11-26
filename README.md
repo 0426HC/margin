@@ -2,11 +2,63 @@
 
 **A study app that makes you do the part that makes learning stick.**
 
-Margin turns a course folder (PDFs, Word, PowerPoint, your own notes) into weeks, and each week into a few **layers**: one idea at a time, explained plainly, checkable against your own files, and then written back by you in your own words. Everything runs on your own computer, and every claim it makes points to a page you can open.
+Margin turns a course folder (PDFs, Word, PowerPoint, your own notes) into weeks, and each week into a few **layers**: one idea at a time, explained plainly, checked against your own files, then written back by you in your own words. It runs on your own computer, and every claim points to a page you can open.
 
-![A week of the demo course on the course page: its title, what it covers, and its layers drawn as an exploded stack of sheets](docs/readme/course-normal.jpg)
+![Scrolling the course page: the opening scene, then each week as a stack of layers](docs/readme/hero.gif)
 
-*All screenshots are the built-in demo course: a few of the Federalist Papers, which are in the public domain.*
+*Every image and clip here is the built-in demo course, a few of the Federalist Papers, which are in the public domain.*
+
+## A quick tour
+
+**Home and projects.** Every course is a tile that shows the week you're in and how many layers you have saved.
+
+![The home page with the project list](docs/readme/home-normal.jpg)
+
+**Starting a course.** Choose a course folder (or just files) and Margin works out the weeks and the layers of each week, then shows you the plan to check.
+
+![The new project screen, before any files are chosen](docs/readme/new-course-normal.jpg)
+
+**The files screen, with reasons.** Every file gets its week, its type and a one-line reason you can check ("Listed in the syllabus under Class 2…"). Anything Claude isn't sure about is marked *check this*.
+
+![The course plan after import: each file with its week, its type and Claude's one-line reason](docs/readme/import-normal.jpg)
+
+**A layer.** A plain explanation with every fact cited to a page, the verbatim source beside it, and a pane to write the layer back in your own words.
+
+![A layer's Explained tab beside the write-back pane](docs/readme/explained-normal.jpg)
+
+**Let's talk!** Ask about the whole course in your own words. Answers cite the real pages.
+
+![Let's talk!: a laptop on the page, the professor typing](docs/readme/talk.gif)
+
+**The agents' round table.** Leave a note ("a one-page study guide for Week 1") and the right agent makes it from your own files, with citations. Finished documents wait in *Ready for you*, to read, download as PDF or Word, or delete.
+
+| Leave a note | Ready for you |
+| --- | --- |
+| ![The agents' panel, Leave a note: a note box with suggestions](docs/readme/agents-leave-a-note-normal.jpg) | ![The agents' panel, Ready for you, with a finished study guide open](docs/readme/agents-ready-normal.jpg) |
+
+**Lecture notes.** One page of your own notes for each week. Scroll over the sheets to pick a week, click to open it.
+
+![Scrolling the Lecture notes sheets to pick a week](docs/readme/lecture-notes.gif)
+
+![Lecture notes, with the week picker scrolled to Week 2](docs/readme/lecture-notes-normal.jpg)
+
+**Note to Self.** Only what you chose to save: each saved write-up is a line in the notebook, written as it appears.
+
+![The Note to Self notebook opening and writing its lines](docs/readme/note-to-self.gif)
+
+**The Exam room.** Reads your exam instruction sheet, writes practice sets in its format, and marks your answers against your own course material.
+
+![The Exam room desk, with the pencil spinning while the student thinks](docs/readme/exam.gif)
+
+**Lock in.** One switch turns off everything decorative and moving and keeps everything needed to study, in a calm graphite palette, with a focus timer.
+
+![Flipping the Lock in switch on and off](docs/readme/lock-in.gif)
+
+| | |
+| --- | --- |
+| ![The course page in lock in: what's next, then every layer as a row](docs/readme/course-lock-in.jpg) | ![A layer's Explained tab in lock in](docs/readme/explained-lock-in.jpg) |
+| ![Let's talk! in lock in](docs/readme/talk-lock-in.jpg) | ![Note to Self in lock in](docs/readme/note-to-self-lock-in.jpg) |
+| ![The Exam room in lock in](docs/readme/exam-lock-in.jpg) | ![The import screen in lock in](docs/readme/import-lock-in.jpg) |
 
 ## The method
 
@@ -19,35 +71,32 @@ Most AI study tools do the work for you: summaries, flashcards, quizzes. Reading
 
 ## What's in it
 
-**Layers and Explained.** Each layer's Explained tab teaches rather than summarises: a short summary, the big question, sections that each answer one sub-question (how and why, not just what), and the so what. Every named concept, person or case in the readings is explained inside the section where it matters (what it is, an example from the reading, why it matters), never as a word list. The explanation streams in as it is written, so you start reading within seconds. *Source* shows the exact passages it rests on, with file and page in the margin.
-
-![A layer's Explained tab beside the write-back pane](docs/readme/explained-normal.jpg)
+**Layers and Explained.** Each layer's Explained tab teaches rather than summarises: a short summary, the big question, sections that each answer one sub-question (how and why, not just what), and the so what. Every named concept, person or case in the readings is explained inside the section where it matters (what it is, an example from the reading, why it matters), never as a word list. The explanation streams in as it is written, so you start reading within seconds. *Source* shows the exact passages it rests on, with file and page in the margin, and *Lecture* shows what the professor's own material stressed.
 
 ![Further down a layer: a section answering its sub-question, each named idea explained where it matters, its pages in the margin](docs/readme/explained-section-normal.jpg)
 
-**Import that reads like a student.** Drop in a folder however it's organised. Claude reads the syllabus and the folder and gives every file its week, its type and a one-line reason you can check ("Listed in the syllabus under Class 2…"). Anything it isn't sure about is marked *check this*.
+**Import that reads like a student.** Drop in a folder however it's organised. Claude reads the syllabus and the folder tree, keeps the course's own week numbering, and tells your notes from the professor's material by author, style and folder.
 
-![The course plan after import: each file with its week, its type and Claude's one-line reason](docs/readme/import-normal.jpg)
-
-**Let's talk!** Ask about the whole course in your own words. Answers come from the course brain (below) and cite the real pages; the passages they relied on collect in a Sources list, and there's a Notepad beside the chat.
+**Let's talk! and the course brain.** Answers come from the course brain (below); the passages they relied on collect in a Sources list, and there's a Notepad beside the chat.
 
 ![Let's talk!: a question about the course and an answer citing the readings](docs/readme/talk-normal.jpg)
 
-**Note to Self.** Only what you chose to save: your write-ups in course order, quick notes beside them, and a chat that knows your notes.
+**Note to Self** keeps your write-ups in course order, quick notes beside them, and a chat that knows your notes.
 
 ![Note to Self with a saved write-up](docs/readme/note-to-self-normal.jpg)
 
-**Exam room.** Reads your exam instruction sheet, writes practice sets in its format, and marks your answers against your own course material.
-
 ![The Exam room, with the exam's details read from its sheet](docs/readme/exam-normal.jpg)
 
-**Lock in.** One switch turns off everything decorative and moving and keeps everything needed to study, in a calm graphite palette, with a focus timer.
+## Adding files later
 
-| | |
-| --- | --- |
-| ![The course page in lock in: what's next, then every layer as a row](docs/readme/course-lock-in.jpg) | ![A layer's Explained tab in lock in](docs/readme/explained-lock-in.jpg) |
-| ![Let's talk! in lock in](docs/readme/talk-lock-in.jpg) | ![Note to Self in lock in](docs/readme/note-to-self-lock-in.jpg) |
-| ![The Exam room in lock in](docs/readme/exam-lock-in.jpg) | ![The import screen in lock in](docs/readme/import-lock-in.jpg) |
+**Update from folder** and **Add files** (both in the course's top bar) use the same sheet, and nothing is written until you approve.
+
+1. **Compare.** Margin fingerprints each file you choose and compares it with what the course already holds: new, changed, removed, or unchanged (same path and same content, or only moved, which is skipped). No AI is involved yet. Update from folder compares the whole folder, so files that left it are offered as removed (you choose whether their passages stay in the course); Add files is for files you pick by hand.
+2. **Week, type and reason.** For new files, code measures them (pages, words, headings, opening text) and the same organizer used at import labels each one against the course's *stored* syllabus, its weeks and its existing files: a week, a type, how sure it is, and a one-line reason. With Add files you can name the week yourself; otherwise Margin decides and shows its choice. You can change any file's week or type, or skip a file, before approving.
+3. **Into the existing layers.** Approved files are cut into passages like the first import. Claude then places each new passage in an existing layer of its week, or proposes a new layer when the topic isn't covered. Code checks that every passage lands exactly once (and falls back to a plain placement by week if the answer doesn't fit). A layer that gained material shows "New material since you saved". New layers are only proposals until you approve them one by one or add them to an existing layer instead. Saved write-ups, Note to Self and chats are never touched.
+4. **The brain reads only what's new.** The course brain reads the new files in the background and links them into its notes; files you removed take their places with them. Nothing else is re-read.
+
+One limit: a **new syllabus** doesn't re-read the course's weeks, and a new file's pages aren't split between weeks. For either, import the course again.
 
 ## How it works
 
