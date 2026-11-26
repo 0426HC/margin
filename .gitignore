@@ -43,3 +43,6 @@ docs/screens/
 
 # private notes for the owner: never committed or pushed
 private/
+
+# the optional README video is made locally and never committed
+readme-videos/

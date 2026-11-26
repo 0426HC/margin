@@ -4,61 +4,77 @@
 
 Margin turns a course folder (PDFs, Word, PowerPoint, your own notes) into weeks, and each week into a few **layers**: one idea at a time, explained plainly, checked against your own files, then written back by you in your own words. It runs on your own computer, and every claim points to a page you can open.
 
-![Scrolling the course page: the opening scene, then each week as a stack of layers](docs/readme/hero.gif)
+*Every image here is the built-in demo course, a few of the Federalist Papers, which are in the public domain.*
 
-*Every image and clip here is the built-in demo course, a few of the Federalist Papers, which are in the public domain.*
+## A visual tour
 
-## A quick tour
+**1. Home.** What you see when you first open Margin.
 
-**Home and projects.** Every course is a tile that shows the week you're in and how many layers you have saved.
+![Margin's home page](docs/readme/01-home.jpg)
 
-![The home page with the project list](docs/readme/home-normal.jpg)
+**2. Your projects.** Every course is a tile that shows the week you're in and how many layers you have saved.
 
-**Starting a course.** Choose a course folder (or just files) and Margin works out the weeks and the layers of each week, then shows you the plan to check.
+![The project list on the home page](docs/readme/02-projects.jpg)
 
-![The new project screen, before any files are chosen](docs/readme/new-course-normal.jpg)
+**3. A new project.** Choose a course folder (or just files) and Margin works out the weeks and the layers of each week.
 
-**The files screen, with reasons.** Every file gets its week, its type and a one-line reason you can check ("Listed in the syllabus under Class 2…"). Anything Claude isn't sure about is marked *check this*.
+![The new project page, before any files are chosen](docs/readme/03-new-project.jpg)
 
-![The course plan after import: each file with its week, its type and Claude's one-line reason](docs/readme/import-normal.jpg)
+**4. The import.** Every file gets its week, its type and a one-line reason you can check. Anything Claude isn't sure about is marked *check this*.
 
-**A layer.** A plain explanation with every fact cited to a page, the verbatim source beside it, and a pane to write the layer back in your own words.
+![The import page: each file with its week, type and reason](docs/readme/04-import.jpg)
 
-![A layer's Explained tab beside the write-back pane](docs/readme/explained-normal.jpg)
+**5. A project's home screen.** The opening scene: the course's name and where you stand in it.
 
-**Let's talk!** Ask about the whole course in your own words. Answers cite the real pages.
+![A project's opening scene](docs/readme/05-course.jpg)
 
-![Let's talk!: a laptop on the page, the professor typing](docs/readme/talk.gif)
+**6. The agents' round table, resting.** Five small agents wait at the table for a note.
 
-**The agents' round table.** Leave a note ("a one-page study guide for Week 1") and the right agent makes it from your own files, with citations. Finished documents wait in *Ready for you*, to read, download as PDF or Word, or delete.
+![The agents' round table with the agents idle](docs/readme/06-round-table-idle.jpg)
+
+**7. The round table at work.** Leave a note and the right agent sits down to make it from your own files.
+
+![The agents' round table while the agents are working](docs/readme/07-round-table-at-work.jpg)
+
+**8. The agents' panel.** Leave a note on one side; finished documents, with citations, wait in *Ready for you* on the other.
 
 | Leave a note | Ready for you |
 | --- | --- |
-| ![The agents' panel, Leave a note: a note box with suggestions](docs/readme/agents-leave-a-note-normal.jpg) | ![The agents' panel, Ready for you, with a finished study guide open](docs/readme/agents-ready-normal.jpg) |
+| ![The agents' panel, Leave a note](docs/readme/08a-agents-leave-a-note.jpg) | ![The agents' panel, Ready for you, with a finished study guide open](docs/readme/08b-agents-ready.jpg) |
 
-**Lecture notes.** One page of your own notes for each week. Scroll over the sheets to pick a week, click to open it.
+**9. The layers.** Each week is a scene with its layers stacked as sheets, each with its own big question.
 
-![Scrolling the Lecture notes sheets to pick a week](docs/readme/lecture-notes.gif)
+![A week scene with its layers stacked as sheets](docs/readme/09-layers.jpg)
 
-![Lecture notes, with the week picker scrolled to Week 2](docs/readme/lecture-notes-normal.jpg)
+<!-- VIDEO: layers-scroll -->
 
-**Note to Self.** Only what you chose to save: each saved write-up is a line in the notebook, written as it appears.
+**10. Inside a layer.** A plain explanation with every fact cited to a page, beside the pane where you write the layer back in your own words.
 
-![The Note to Self notebook opening and writing its lines](docs/readme/note-to-self.gif)
+![A layer's Explained tab with the write-back pane](docs/readme/10-layer-explained.jpg)
 
-**The Exam room.** Reads your exam instruction sheet, writes practice sets in its format, and marks your answers against your own course material.
+**11. Let's talk!** Ask about the whole course in your own words. Answers cite the real pages.
 
-![The Exam room desk, with the pencil spinning while the student thinks](docs/readme/exam.gif)
+![Let's talk!: a question about the course and an answer citing the readings](docs/readme/11-talk.jpg)
 
-**Lock in.** One switch turns off everything decorative and moving and keeps everything needed to study, in a calm graphite palette, with a focus timer.
+**12. Lecture notes.** One page of your own notes for each week. Scroll over the sheets to pick a week.
 
-![Flipping the Lock in switch on and off](docs/readme/lock-in.gif)
+![Lecture notes, with the week picker on Week 2](docs/readme/12-lecture-notes.jpg)
+
+**13. Note to Self.** Only what you chose to save, in course order, with a chat that knows your notes.
+
+![Note to Self with saved write-ups](docs/readme/13-note-to-self.jpg)
+
+**14. The Exam room.** Reads your exam sheet, writes practice sets in its format and marks your answers against your own course material.
+
+![The Exam room, with the exam's details read from its sheet](docs/readme/14-exam-room.jpg)
+
+**15. Lock in.** One switch turns off everything decorative and moving and keeps everything needed to study, in a calm graphite palette, with a focus timer.
 
 | | |
 | --- | --- |
-| ![The course page in lock in: what's next, then every layer as a row](docs/readme/course-lock-in.jpg) | ![A layer's Explained tab in lock in](docs/readme/explained-lock-in.jpg) |
-| ![Let's talk! in lock in](docs/readme/talk-lock-in.jpg) | ![Note to Self in lock in](docs/readme/note-to-self-lock-in.jpg) |
-| ![The Exam room in lock in](docs/readme/exam-lock-in.jpg) | ![The import screen in lock in](docs/readme/import-lock-in.jpg) |
+| ![The course page in lock in](docs/readme/lock-in-course.jpg) | ![A layer's Explained tab in lock in](docs/readme/lock-in-explained.jpg) |
+| ![Let's talk! in lock in](docs/readme/lock-in-talk.jpg) | ![Note to Self in lock in](docs/readme/lock-in-note-to-self.jpg) |
+| ![The Exam room in lock in](docs/readme/lock-in-exam.jpg) | ![The import page in lock in](docs/readme/lock-in-import.jpg) |
 
 ## The method
 
@@ -73,19 +89,19 @@ Most AI study tools do the work for you: summaries, flashcards, quizzes. Reading
 
 **Layers and Explained.** Each layer's Explained tab teaches rather than summarises: a short summary, the big question, sections that each answer one sub-question (how and why, not just what), and the so what. Every named concept, person or case in the readings is explained inside the section where it matters (what it is, an example from the reading, why it matters), never as a word list. The explanation streams in as it is written, so you start reading within seconds. *Source* shows the exact passages it rests on, with file and page in the margin, and *Lecture* shows what the professor's own material stressed.
 
-![Further down a layer: a section answering its sub-question, each named idea explained where it matters, its pages in the margin](docs/readme/explained-section-normal.jpg)
+![Further down a layer: a section answering its sub-question, each named idea explained where it matters, its pages in the margin](docs/readme/explained-section.jpg)
 
 **Import that reads like a student.** Drop in a folder however it's organised. Claude reads the syllabus and the folder tree, keeps the course's own week numbering, and tells your notes from the professor's material by author, style and folder.
 
 **Let's talk! and the course brain.** Answers come from the course brain (below); the passages they relied on collect in a Sources list, and there's a Notepad beside the chat.
 
-![Let's talk!: a question about the course and an answer citing the readings](docs/readme/talk-normal.jpg)
+![Let's talk!: a question about the course and an answer citing the readings](docs/readme/11-talk.jpg)
 
 **Note to Self** keeps your write-ups in course order, quick notes beside them, and a chat that knows your notes.
 
-![Note to Self with a saved write-up](docs/readme/note-to-self-normal.jpg)
+![Note to Self with a saved write-up](docs/readme/13-note-to-self.jpg)
 
-![The Exam room, with the exam's details read from its sheet](docs/readme/exam-normal.jpg)
+![The Exam room, with the exam's details read from its sheet](docs/readme/14-exam-room.jpg)
 
 ## Adding files later
 
