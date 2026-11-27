@@ -64,6 +64,8 @@ export interface StructureWeek {
   status: "proposed" | "approved";
   /** Whether any of the course's material is in this week yet. */
   hasMaterial: boolean;
+  /** Whether the week's layers have a Lecture tab: the week has lecture material or the student's lecture notes. */
+  lecture: boolean;
   words: number;
   layers: StructureLayer[];
   progress: ProgressCounts;

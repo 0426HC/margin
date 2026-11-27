@@ -1,6 +1,6 @@
 /**
  * Builds demo/seed.json: imports the public-domain sample course, proposes and approves its layers with the REAL Claude Code
- * engine, reads every course file into the course brain, writes every layer, and exports the result. Run once: npm run demo:build  (it uses your Claude plan, a few minutes).
+ * engine, reads every course file into the course brain, writes every layer and each week's Lecture tab, and exports the result. Run once: npm run demo:build  (it uses your Claude plan, a few minutes).
  */
 import fs from "node:fs";
 import os from "node:os";
@@ -16,6 +16,7 @@ async function main() {
   const { approvePlan, getStructure, proposeStructure, writeLayerContent } = await import("../lib/layers/service");
   const { exportDemoSeed } = await import("../lib/demo/seed");
   const { readIntoBrain } = await import("../lib/brain/read");
+  const { writeWeekLecture } = await import("../lib/lecture/service");
   const { courseFiles } = await import("../lib/brain/store");
 
   const { db } = openDb(path.join(dataDir, "margin.db"));
@@ -45,6 +46,10 @@ async function main() {
   for (const [i, l] of layers.entries()) {
     console.log(`Writing layer ${i + 1} of ${layers.length}: ${l.title}`);
     await writeLayerContent(db, engine, l.id);
+  }
+  for (const w of getStructure(db, id)!.weeks.filter((x) => x.lecture)) {
+    console.log(`Writing the Lecture tab of week ${w.week}`);
+    await writeWeekLecture(db, engine, id, w.week);
   }
 
   const seed = exportDemoSeed(db, id);

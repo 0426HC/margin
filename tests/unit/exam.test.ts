@@ -189,7 +189,7 @@ describe("the exam room for a course", () => {
     // the sources are the sheet, the covered readings and what the lecture stressed, and nothing from the lecture notes
     expect(call.prompt).toContain("Midterm exam instructions.txt");
     expect(call.prompt).toContain("What the lectures stressed (counted by Margin)");
-    expect(call.prompt).toContain("Slides in this layer");
+    expect(call.prompt).toContain("Slides or pages:");
   });
 
   it("lecture notes are never sent to any exam prompt", async () => {

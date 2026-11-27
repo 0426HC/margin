@@ -87,9 +87,11 @@ Most AI study tools do the work for you: summaries, flashcards, quizzes. Reading
 
 ## What's in it
 
-**Layers and Explained.** Each layer's Explained tab teaches rather than summarises: a short summary, the big question, sections that each answer one sub-question (how and why, not just what), and the so what. Every named concept, person or case in the readings is explained inside the section where it matters (what it is, an example from the reading, why it matters), never as a word list. The explanation streams in as it is written, so you start reading within seconds. *Source* shows the exact passages it rests on, with file and page in the margin, and *Lecture* shows what the professor's own material stressed.
+**Layers and Explained.** Each layer's Explained tab teaches rather than summarises: a short summary, the big question, sections that each answer one sub-question (how and why, not just what), and the so what. Every named concept, person or case in the readings is explained inside the section where it matters (what it is, an example from the reading, why it matters), never as a word list. The explanation streams in as it is written, so you start reading within seconds. *Source* shows the exact passages it rests on, with file and page in the margin.
 
 ![Further down a layer: a section answering its sub-question, each named idea explained where it matters, its pages in the margin](docs/readme/explained-section.jpg)
+
+**The Lecture tab, once per week.** Every layer of a week shows the same *Lecture* tab, in two parts. *From your lecture notes* reads what you wrote in Lecture notes that week, often a few words per point, and turns it into a short, organised summary of what the lecture covered: each point you wrote gets a sentence or two of context from the week's readings and slides, with the pages in the margin, and a point that is only in your notes is marked "(from your notes)" and never given a page. It is written again a few minutes after you stop editing that week's notes, or as soon as you leave the page. *From the lecture material* reads the slides or notes the professor posted and says what the lecture spent its time on, what the material itself marks as important, the examples it used and where it differs from the readings, with a part for each lecture when a week has two. Both stream in when you open the tab; a week with neither notes nor lecture material simply has no Lecture tab.
 
 **Import that reads like a student.** Drop in a folder however it's organised. Claude reads the syllabus and the folder tree, keeps the course's own week numbering, and tells your notes from the professor's material by author, style and folder.
 
@@ -133,9 +135,9 @@ One limit: a **new syllabus** doesn't re-read the course's weeks, and a new file
 | structure | each week's layers | Opus |
 | explain | Explained (streamed), its section fixes and the Source picks | Opus (low effort) |
 | review | feedback on write-backs, "I don't get it" | Opus |
-| lecture, exam, request | the Lecture tab, the Exam room, the agents' documents | Opus |
+| lecture, exam, request | each week's Lecture tab, the Exam room, the agents' documents | Opus |
 | brain | reading every file into the course brain | Sonnet |
-| talk, notes | Let's talk!, the notebook chat, picking your lecture notes | Sonnet |
+| talk | Let's talk!, the notebook chat | Sonnet |
 
 **Writing a layer.** Explained is one streamed call, shown as it arrives. Code then checks it part by part (citations, length, and every concept the readings discuss) and writes again only the part that failed: one section, or a sentence or two added where a concept belongs. On a real 10,000-word layer the first words appear in about 7 seconds and the whole layer is done in under a minute. Margin stops only if nothing new arrives for 3 minutes.
 

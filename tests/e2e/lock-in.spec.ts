@@ -127,7 +127,9 @@ test("in lock in the Layers tab is one plain screen: Up next, every layer as a r
 });
 
 test("layer pages in lock in keep their tabs and sidebar, with no agents corner and a book-width reading column", async ({ page }) => {
-  await goOpen(page, `/p/${id}/l/${layers[0]}`);
+  // a week 3 layer: its week has lecture material, so it has all three tabs (a week with neither notes nor lecture material has no Lecture tab)
+  const week3 = dbAll<{ id: string }>("select l.id from layers l join parts p on p.id = l.part_id where p.project_id = ? and p.week = 3 and l.proposed = 0 order by l.position", id)[0].id;
+  await goOpen(page, `/p/${id}/l/${week3}`);
   await expect(page.getByRole("tab", { name: "Explained" })).toBeVisible({ timeout: 30_000 });
   const wideNormal = await page.locator(".m-row > p").first().evaluate((el) => el.getBoundingClientRect().width);
   await lockIn(page);

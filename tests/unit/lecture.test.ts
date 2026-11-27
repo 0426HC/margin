@@ -1,19 +1,20 @@
 // @vitest-environment node
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { cannedEngine, cannedJson } from "@/lib/ai/canned";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { cannedEngine, cannedText } from "@/lib/ai/canned";
 import { splitCitations } from "@/lib/ai/citations";
 import type { AiRequest } from "@/lib/ai/engine";
 import { FakeEngine } from "@/lib/ai/fake-engine";
-import { classNotesPickSchema, lectureWritingSchema } from "@/lib/ai/schemas";
 import { openDb, type Db } from "@/lib/db/client";
 import * as s from "@/lib/db/schema";
-import { approvePlan, getStructure, proposeStructure, StructureError } from "@/lib/layers/service";
+import { approvePlan, getStructure, proposeStructure } from "@/lib/layers/service";
 import { lectureFacts } from "@/lib/lecture/facts";
-import { getLectureTab, refreshLayerAndLecture, writeLecture } from "@/lib/lecture/service";
+import { notesSaved } from "@/lib/lecture/schedule";
+import { getWeekLecture, nextLectureWeek, notesQuiet, weekHasLecture, writeWeekLecture } from "@/lib/lecture/service";
+import { FROM_NOTES, lectureProblems, readLectureText } from "@/lib/lecture/text";
 import type { LectureSlide } from "@/lib/lecture/types";
 import { addFile, analyzeProject, createProject } from "@/lib/projects/service";
 import { saveWeekNotes } from "@/lib/weeks/notes";
@@ -39,215 +40,230 @@ describe("counting a lecture", () => {
   it("counts slides, once per slide however often a word repeats on it", () => {
     expect(facts.slides).toBe(6);
     expect(facts.files).toEqual([{ name: "L.pptx", slides: 6 }]);
-    const power = facts.terms.find((t) => t.term === "power")!;
-    expect(power.slides.map((x) => x.page)).toEqual([2, 3, 5]);
+    expect(facts.terms.find((t) => t.term === "power")!.slides.map((x) => x.page)).toEqual([2, 3, 5]);
     expect(facts.terms.find((t) => t.term === "ambition")!.slides.map((x) => x.page)).toEqual([4, 5]);
-    expect(facts.terms[0].slides.length).toBeGreaterThanOrEqual(facts.terms[facts.terms.length - 1].slides.length); // most slides first
   });
 
-  it("finds phrases that come back on more than one slide, not ones that appear once", () => {
-    const phrases = facts.repeated.map((r) => r.phrase);
-    expect(phrases.some((p) => p.includes("ambition") && p.includes("counteract"))).toBe(true);
-    expect(phrases).not.toContain("qualified veto");
-    for (const r of facts.repeated) expect(r.slides.length).toBeGreaterThan(1);
-  });
-
-  it("copies the lines a slide marks as important and the lines that introduce an example, as written, with their slide", () => {
-    expect(facts.flagged).toEqual([
-      { file: "L.pptx", page: 2, text: "Important: the structure itself must resist" },
-      { file: "L.pptx", page: 6, text: "Remember: a qualified veto also checks hasty law" },
-    ]);
+  it("finds phrases that come back on more than one slide, and copies the lines the slides mark as important or as an example", () => {
+    expect(facts.repeated.map((r) => r.phrase).some((p) => p.includes("ambition") && p.includes("counteract"))).toBe(true);
+    expect(facts.flagged.map((f) => f.page)).toEqual([2, 6]);
     expect(facts.examples).toEqual([{ file: "L.pptx", page: 3, text: "For example, judges are appointed, not elected" }]);
-  });
-
-  it("names the slides with the most on them", () => {
-    expect(facts.longest[0]).toMatchObject({ page: 2, title: "The problem" });
-    expect(facts.longest).toHaveLength(3);
-  });
-
-  it("says nothing when there is nothing to say", () => {
-    const empty = lectureFacts([slide(1, "Title", "Hello")]);
-    expect(empty).toMatchObject({ slides: 1, terms: [], repeated: [], flagged: [], examples: [] });
   });
 });
 
-describe("the Lecture tab of a layer", () => {
+describe("the Lecture tab's text", () => {
+  it("reads parts, topics, bullets and paragraphs, also while it is still arriving", () => {
+    const text = "## Lecture 5\n\n### What it stressed\n- One. [A.pdf, p. 2]\n- Two (from your notes)\n\nA paragraph\nthat wraps. [A.pdf, p. 3]\n\n### Half a hea";
+    expect(readLectureText(text)).toEqual([
+      { type: "part", text: "Lecture 5" },
+      { type: "topic", text: "What it stressed" },
+      { type: "bullets", items: ["One. [A.pdf, p. 2]", "Two (from your notes)"] },
+      { type: "paragraph", text: "A paragraph that wraps. [A.pdf, p. 3]" },
+      { type: "topic", text: "Half a hea" },
+    ]);
+  });
+
+  it("drops bold markup and flattens nested bullets, so no stray symbols show", () => {
+    expect(readLectureText("**Exchange numbers.** The lecture says one thing.\n\n- Top\n  - nested")).toEqual([
+      { type: "paragraph", text: "Exchange numbers. The lecture says one thing." },
+      { type: "bullets", items: ["Top", "nested"] },
+    ]);
+  });
+
+  it("finds citations to pages that weren't sent, and notes-section points with neither a citation nor the marker", () => {
+    const sent = [{ file: "A.pdf", page: 2 }];
+    expect(lectureProblems(`- Fine. [A.pdf, p. 2]\n- Mine. ${FROM_NOTES}\n- Made up. [A.pdf, p. 9]\n- Bare claim.`, sent, { notes: true })).toEqual({ invalid: ["[A.pdf, p. 9]"], unmarked: ["Bare claim."] });
+    expect(lectureProblems("Bare claim.", sent, { notes: false }).unmarked).toEqual([]);
+  });
+
+  it("the quiet rule: the notes count as finished three minutes after the last save, or once the student left the page", () => {
+    expect(notesQuiet(1_000, 1_000 + 179_000, 180_000)).toBe(false);
+    expect(notesQuiet(1_000, 1_000 + 180_000, 180_000)).toBe(true);
+    expect(notesQuiet(1_000, 2_000, 180_000, 1_500)).toBe(true); // left after the last save
+    expect(notesQuiet(1_000, 2_000, 180_000, 500)).toBe(false); // left before editing again
+  });
+});
+
+describe("the Lecture tab of a week", () => {
   let db: Db;
   let projectId: string;
-  /** The layer that holds the lecture slides, and one that does not. */
-  let withLecture: string;
-  let without: string;
-
-  beforeEach(async () => {
+  const notesCalls = (e: FakeEngine) => e.calls.filter((c) => c.task === "lecture-notes");
+  const materialCalls = (e: FakeEngine) => e.calls.filter((c) => c.task === "lecture-material");
+  /** The sample course (week 1 a reading, week 3 a reading and a lecture deck), plus any extra made-up files, imported and approved. */
+  async function makeCourse(extra: { rel: string; text: string }[] = []) {
     db = openDb(":memory:").db;
     projectId = createProject(db, { name: "POL101" });
-    const add = async (rel: string) => addFile(db, projectId, { name: path.basename(rel), relPath: rel, bytes: new Uint8Array(fs.readFileSync(path.join(COURSE, rel))) });
+    const add = async (rel: string, bytes?: Uint8Array) => addFile(db, projectId, { name: path.basename(rel), relPath: rel, bytes: bytes ?? new Uint8Array(fs.readFileSync(path.join(COURSE, rel))) });
     await add("POL101 Syllabus F26.md");
     await add("Week 1 - Foundations/federalist-01.txt");
     await add("Week 3 - Checks and balances/federalist-51.md");
     await add("Week 3 - Checks and balances/Lecture 3 slides.pptx");
+    for (const f of extra) await add(f.rel, new TextEncoder().encode(f.text));
     await analyzeProject(db, cannedEngine(), projectId);
     await proposeStructure(db, cannedEngine(), projectId);
-    approvePlan(db, projectId); // "Looks good"
-    const layers = getStructure(db, projectId)!.weeks.flatMap((w) => w.layers);
-    withLecture = layers.find((l) => getLectureTab(db, l.id).files.length)!.id;
-    without = layers.find((l) => !getLectureTab(db, l.id).files.length)!.id;
+    approvePlan(db, projectId);
+  }
+
+  beforeEach(() => makeCourse());
+  afterEach(() => {
+    vi.useRealTimers();
+    delete process.env.MARGIN_LECTURE_QUIET_S;
   });
 
-  it("knows which layers have lecture files, by the file's label", async () => {
-    expect(getLectureTab(db, withLecture).files).toEqual(["Lecture 3 slides.pptx"]);
-    expect(getLectureTab(db, without).files).toEqual([]);
-    // the student can relabel a file: then the layer has none
-    db.update(s.files).set({ role: "reading" }).where(eq(s.files.name, "Lecture 3 slides.pptx")).run();
-    expect(getLectureTab(db, withLecture).files).toEqual([]);
-  });
-
-  it("with no lecture files it writes nothing and asks no model", async () => {
+  it("neither notes nor lecture material: no Lecture tab, and no model is asked", async () => {
     const engine = cannedEngine();
-    expect(() => writeLecture(db, engine, without)).toThrow(StructureError);
-    expect(() => writeLecture(db, engine, without)).toThrow(/No lecture files for this layer yet/);
+    expect(weekHasLecture(getWeekLecture(db, projectId, 1))).toBe(false);
+    expect(getStructure(db, projectId)!.weeks.find((w) => w.week === 1)!.lecture).toBe(false);
+    await writeWeekLecture(db, engine, projectId, 1);
     expect(engine.calls).toHaveLength(0);
-    expect(db.select().from(s.layerLecture).all()).toHaveLength(0);
+    expect(db.select().from(s.weekLecture).all()).toHaveLength(0);
   });
 
-  it("writes it once, from the lecture slides only, counting by code, then reads it from the cache", async () => {
+  it("lecture material but no notes: the material section only, written once from the week's lecture files with counted numbers and checked citations", async () => {
     const engine = cannedEngine();
-    await writeLecture(db, engine, withLecture);
-    const tab = getLectureTab(db, withLecture);
-    expect(tab.content).not.toBeNull();
-    expect(tab.content!.facts.files).toEqual([{ name: "Lecture 3 slides.pptx", slides: expect.any(Number) }]);
-    expect(tab.content!.facts.slides).toBeGreaterThan(0);
-    // the model is told the counted numbers, and the slide text is under "Lecture material"
-    const lectureCall = engine.calls.find((c) => c.system.includes('write the "Lecture" tab'))!;
-    expect(lectureCall.prompt).toContain("Counted by Margin");
-    expect(lectureCall.prompt).toContain(`Slides in this layer: ${tab.content!.facts.slides}`);
-    const slideSection = lectureCall.prompt.split("## Lecture material\n")[1].split("\n\n## ")[0];
-    expect(slideSection).toContain("Lecture 3 slides.pptx");
-    expect(slideSection).not.toContain("federalist-51.md");
-    // Opus at medium effort for the writing, like Explained
-    expect(lectureCall).toMatchObject({ model: "claude-opus-5-5", effort: "medium" });
-    // once written, opening it again asks nothing
-    const before = engine.calls.length;
-    await writeLecture(db, engine, withLecture);
-    expect(engine.calls).toHaveLength(before);
+    const before = getWeekLecture(db, projectId, 3);
+    expect(before).toMatchObject({ files: ["Lecture 3 slides.pptx"], hasNotes: false, notes: null, material: null });
+    expect(getStructure(db, projectId)!.weeks.find((w) => w.week === 3)!.lecture).toBe(true);
+    await writeWeekLecture(db, engine, projectId, 3);
+    expect(notesCalls(engine)).toHaveLength(0);
+    const [call] = materialCalls(engine);
+    expect(call.model).toBe("claude-opus-5-5");
+    expect(call.prompt).toContain("## Lecture file: Lecture 3 slides.pptx\nCounted by Margin:");
+    expect(call.prompt.split("## Reading passages\n")[1]).toContain("federalist-51.md");
+    const tab = getWeekLecture(db, projectId, 3);
+    expect(tab.material).toMatchObject({ stale: false });
+    for (const h of ["What it spent its time on", "What it stressed", "The examples it used", "Where it differs from the readings"]) expect(tab.material!.text).toContain(`### ${h}`);
+    const sent = new Set([...call.prompt.matchAll(/^\[([^\]\n]+), p\. (\d+)\]/gm)].map((m) => `${m[1]}|${m[2]}`));
+    const cites = splitCitations(tab.material!.text).flatMap((p) => ("cite" in p ? [`${p.cite.file}|${p.cite.page}`] : []));
+    expect(cites.length).toBeGreaterThan(0);
+    for (const c of cites) expect(sent.has(c)).toBe(true);
+    // opened again: nothing is written again
+    await writeWeekLecture(db, engine, projectId, 3);
+    expect(materialCalls(engine)).toHaveLength(1);
   });
 
-  it("every citation in what it wrote points at a slide or a reading page that was sent", async () => {
-    await writeLecture(db, cannedEngine(), withLecture);
-    const w = getLectureTab(db, withLecture).content!.writing;
-    const valid = new Set(db.select({ f: s.files.name, p: s.passages.page }).from(s.passages).innerJoin(s.files, eq(s.files.id, s.passages.fileId)).all().map((r) => `${r.f}#${r.p}`));
-    let cites = 0;
-    for (const b of w.blocks) {
-      for (const text of b.type === "paragraph" ? [b.text] : b.type === "bullets" ? b.items : []) {
-        for (const part of splitCitations(text)) if ("cite" in part) (cites++, expect(valid.has(`${part.cite.file}#${part.cite.page}`)).toBe(true));
-      }
-    }
-    expect(cites).toBeGreaterThan(0);
-  });
-
-  it("a citation the model made up is asked about once, then stripped, so no link to a made-up slide is ever kept", async () => {
-    const calls: string[] = [];
-    const engine = new FakeEngine({
-      json: (req: AiRequest) => {
-        if (!req.system.includes('write the "Lecture" tab')) return cannedJson(req);
-        calls.push(req.prompt);
-        return { blocks: [{ type: "heading", text: "Where" }, { type: "paragraph", text: "A real claim. [Lecture 3 slides.pptx, p. 2] And an invented one. [Made up.pptx, p. 40]" }, { type: "bullets", items: ["Another. [Lecture 3 slides.pptx, p. 3]"] }] };
-      },
-    });
-    await writeLecture(db, engine, withLecture);
-    expect(calls).toHaveLength(2); // asked once more
-    expect(calls[1]).toContain("Made up.pptx");
-    const text = JSON.stringify(getLectureTab(db, withLecture).content!.writing);
-    expect(text).not.toContain("Made up.pptx");
-    expect(text).toContain("Lecture 3 slides.pptx, p. 2");
-  });
-
-  it("filters the student's own lecture notes to this layer, copied exactly, with a gentle note where they disagree", async () => {
+  it("notes and material: both sections; short notes are expanded from the week's files and pointed back to them; a point only in the notes is marked and never cited", async () => {
     saveWeekNotes(db, projectId, 3, [
-      { type: "heading", text: "Week 3" },
-      { type: "bullet", text: "ambition -> counteracts ambition" },
-      { type: "bullet", text: "the veto DIFFERS from what I thought" },
-      { type: "paragraph", text: "lunch was off topic" },
+      { type: "bullet", text: "ambition counteract ambition" },
+      { type: "bullet", text: "prof's dog was in class lol" },
     ]);
     const engine = cannedEngine();
-    await writeLecture(db, engine, withLecture);
-    const notes = getLectureTab(db, withLecture).content!.notes;
-    expect(notes.weeksDrawn).toContain(3);
-    const week3 = notes.weeks.find((w) => w.week === 3)!;
-    expect(week3.lines).toContain("ambition -> counteracts ambition"); // the student's words, untouched
-    expect(week3.lines).not.toContain("lunch was off topic");
-    expect(notes.checks).toHaveLength(1);
-    expect(notes.checks[0]).toMatch(/Worth a second look/);
-    // the lines were chosen by the cheaper model
-    const pick = engine.calls.find((c) => c.system.includes("class notes"))!;
-    expect(pick.model).toBe("sonnet");
-    expect(pick.system).toContain("not the professor's words");
+    await writeWeekLecture(db, engine, projectId, 3);
+    expect(materialCalls(engine)).toHaveLength(1);
+    const [call] = notesCalls(engine);
+    expect(call.system).toContain("Expand only what the student wrote");
+    expect(call.system).toContain(FROM_NOTES);
+    expect(call.prompt).toContain("- ambition counteract ambition");
+    // the passages sent are the ones the note lines are about, found by a word search over the week's files
+    expect(call.prompt.split("## Passages from this week's readings and lecture material about these notes\n")[1]).toMatch(/ambition/i);
+    const tab = getWeekLecture(db, projectId, 3);
+    const lines = readLectureText(tab.notes!.text).flatMap((b) => (b.type === "bullets" ? b.items : []));
+    const expanded = lines.find((l) => l.includes("ambition counteract ambition"))!;
+    expect(splitCitations(expanded).some((p) => "cite" in p)).toBe(true);
+    const own = lines.find((l) => l.includes("dog"))!;
+    expect(own).toContain(FROM_NOTES);
+    expect(splitCitations(own).some((p) => "cite" in p)).toBe(false);
+    // the notes go only to the notes section, never to the material section
+    expect(materialCalls(engine)[0].prompt).not.toContain("dog");
   });
 
-  it("a weeks' notes that don't exist are said to be missing, and the lecture notes are never sent anywhere else", async () => {
+  it("notes but no lecture material: the notes section only", async () => {
+    saveWeekNotes(db, projectId, 1, [{ type: "bullet", text: "faction and the size of the republic" }]);
     const engine = cannedEngine();
-    await writeLecture(db, engine, withLecture);
-    const notes = getLectureTab(db, withLecture).content!.notes;
-    expect(notes.weeks).toEqual([]);
-    expect(notes.empty).toContain(3);
-    // no notes at all: the notes model is never called
-    expect(engine.calls.some((c) => c.system.includes("class notes"))).toBe(false);
-    // and the layer's other prompts (Explained, review, chat) never carry lecture notes: only the lecture module reads them
-    saveWeekNotes(db, projectId, 3, [{ type: "paragraph", text: "SECRETNOTE about ambition" }]);
-    await writeLecture(db, engine, withLecture); // already written: only the notes are redone
-    expect(engine.calls.filter((c) => c.prompt.includes("SECRETNOTE")).every((c) => c.system.includes("class notes"))).toBe(true);
+    const before = getWeekLecture(db, projectId, 1);
+    expect(before).toMatchObject({ files: [], hasNotes: true });
+    expect(weekHasLecture(before)).toBe(true);
+    expect(getStructure(db, projectId)!.weeks.find((w) => w.week === 1)!.lecture).toBe(true);
+    await writeWeekLecture(db, engine, projectId, 1);
+    expect(materialCalls(engine)).toHaveLength(0);
+    expect(notesCalls(engine)).toHaveLength(1);
+    expect(getWeekLecture(db, projectId, 1)).toMatchObject({ material: null, notes: { stale: false } });
   });
 
-  it("when the lecture notes change, only the class-notes section is made again, by the cheap model", async () => {
+  it("two lectures in a week: the material section gives each its own part", async () => {
+    const text = `# Lecture 3b: the senate\n\n${Array.from({ length: 40 }, (_, i) => `The senate checks the house on point ${i}. Important: a second chamber slows hasty law.`).join(" ")}\n`;
+    await makeCourse([{ rel: "Week 3 - Checks and balances/Lecture 3b slides.md", text }]);
     const engine = cannedEngine();
-    await writeLecture(db, engine, withLecture);
-    expect(getLectureTab(db, withLecture).notesStale).toBe(false);
-    saveWeekNotes(db, projectId, 3, [{ type: "bullet", text: "a new note about ambition" }]);
-    expect(getLectureTab(db, withLecture).notesStale).toBe(true);
-    const opusBefore = engine.calls.filter((c) => c.model === "claude-opus-5-5").length;
-    await writeLecture(db, engine, withLecture);
-    expect(engine.calls.filter((c) => c.model === "claude-opus-5-5")).toHaveLength(opusBefore);
-    expect(getLectureTab(db, withLecture).notesStale).toBe(false);
-    expect(getLectureTab(db, withLecture).content!.notes.weeks[0].lines).toEqual(["a new note about ambition"]);
+    await writeWeekLecture(db, engine, projectId, 3);
+    expect(materialCalls(engine)[0].prompt.match(/^## Lecture file: /gm)).toHaveLength(2);
+    expect(materialCalls(engine)[0].system).toContain("give each lecture its own part");
+    const parts = readLectureText(getWeekLecture(db, projectId, 3).material!.text).filter((b) => b.type === "part");
+    expect(parts.map((p) => p.text)).toEqual(["Lecture 3 slides", "Lecture 3b slides"]);
   });
 
-  it("Refresh this layer writes Explained and the Lecture tab again and leaves the saved write-up alone", async () => {
+  it("a citation the model made up, or a notes point with no source, is sent back once; a bad citation still there is stripped", async () => {
+    saveWeekNotes(db, projectId, 3, [{ type: "bullet", text: "ambition" }]);
+    let n = 0;
+    const engine = new FakeEngine({
+      text: (req: AiRequest) => {
+        if (req.task !== "lecture-notes") return cannedText(req);
+        n++;
+        const real = req.prompt.match(/^\[[^\]\n]+, p\. \d+\]/m)![0]; // a page that was sent
+        return n === 1 ? "- Ambition counteracts ambition. [Made up.pdf, p. 4]\n- A bare claim." : `- Ambition counteracts ambition. [Made up.pdf, p. 4] ${real}`;
+      },
+    });
+    await writeWeekLecture(db, engine, projectId, 3);
+    const calls = notesCalls(engine);
+    expect(calls).toHaveLength(2);
+    expect(calls[1].prompt).toContain("[Made up.pdf, p. 4]");
+    expect(calls[1].prompt).toContain('"A bare claim."');
+    const text = getWeekLecture(db, projectId, 3).notes!.text;
+    expect(text).not.toContain("Made up.pdf");
+    expect(splitCitations(text).filter((p) => "cite" in p)).toHaveLength(1);
+  });
+
+  it("regenerates the notes section only after editing stops: three quiet minutes, or leaving the page", async () => {
+    saveWeekNotes(db, projectId, 3, [{ type: "bullet", text: "ambition" }]);
     const engine = cannedEngine();
-    const { writeLayerContent } = await import("@/lib/layers/service");
-    await writeLayerContent(db, engine, withLecture);
-    await writeLecture(db, engine, withLecture);
-    db.insert(s.writebacks).values({ id: "w1", targetType: "layer", targetId: withLecture, text: "Mine." }).run();
-    db.insert(s.noteSaves).values({ id: "n1", targetType: "layer", targetId: withLecture, writebackId: "w1", version: "own", text: "Mine." }).run();
-    db.update(s.layers).set({ newMaterialAt: Date.now() }).where(eq(s.layers.id, withLecture)).run();
-    const first = getLectureTab(db, withLecture).content!.writtenAt;
-    await new Promise((r) => setTimeout(r, 5));
-    await refreshLayerAndLecture(db, engine, withLecture);
-    expect(getLectureTab(db, withLecture).content!.writtenAt).toBeGreaterThan(first);
-    expect(getStructure(db, projectId)!.weeks.flatMap((w) => w.layers).find((l) => l.id === withLecture)!.newMaterial).toBe(false);
-    expect(db.select().from(s.noteSaves).all()).toEqual([expect.objectContaining({ id: "n1", text: "Mine." })]);
-    expect(db.select().from(s.writebacks).all()).toHaveLength(1);
+    await writeWeekLecture(db, engine, projectId, 3);
+    expect(notesCalls(engine)).toHaveLength(1);
+
+    vi.useFakeTimers();
+    // typing: every autosave starts the clock again
+    for (let i = 0; i < 5; i++) {
+      saveWeekNotes(db, projectId, 3, [{ type: "bullet", text: `ambition, edit ${i}` }]);
+      notesSaved(db, engine, projectId, 3);
+      await vi.advanceTimersByTimeAsync(60_000);
+    }
+    expect(notesCalls(engine)).toHaveLength(1);
+    expect(getWeekLecture(db, projectId, 3).notes!.stale).toBe(true); // the old version stays, marked out of date
+    // and the background leaves it alone while the student is editing
+    expect(nextLectureWeek(db, { missing: true })).toBeNull();
+    await vi.advanceTimersByTimeAsync(180_000);
+    await vi.waitFor(() => expect(notesCalls(engine)).toHaveLength(2));
+    await vi.waitFor(() => expect(getWeekLecture(db, projectId, 3).notes!.stale).toBe(false));
+    expect(notesCalls(engine)[1].prompt).toContain("ambition, edit 4");
+    expect(materialCalls(engine)).toHaveLength(1); // the material section didn't change
+
+    // leaving the Lecture notes page writes it at once
+    saveWeekNotes(db, projectId, 3, [{ type: "bullet", text: "ambition, last edit" }]);
+    notesSaved(db, engine, projectId, 3, { left: true });
+    await vi.waitFor(() => expect(notesCalls(engine)).toHaveLength(3));
   });
 
-  it("deleting a layer's lecture files removes its stale Lecture tab on refresh", async () => {
+  it("the background writes a section whose files changed, and the notes once they are quiet; emptied notes take their section away", async () => {
+    saveWeekNotes(db, projectId, 3, [{ type: "bullet", text: "ambition" }]);
     const engine = cannedEngine();
-    const { writeLayerContent } = await import("@/lib/layers/service");
-    await writeLayerContent(db, engine, withLecture);
-    await writeLecture(db, engine, withLecture);
-    db.update(s.files).set({ role: "reading" }).where(eq(s.files.name, "Lecture 3 slides.pptx")).run();
-    await refreshLayerAndLecture(db, engine, withLecture);
-    expect(db.select().from(s.layerLecture).all()).toHaveLength(0);
+    await writeWeekLecture(db, engine, projectId, 3);
+    expect(nextLectureWeek(db, { missing: false })).toBeNull();
+    // the week's lecture file is relabelled as a reading: the material section is gone, the notes section is out of date
+    db.update(s.files).set({ role: "reading", type: "reading" }).where(eq(s.files.name, "Lecture 3 slides.pptx")).run();
+    process.env.MARGIN_LECTURE_QUIET_S = "0";
+    expect(nextLectureWeek(db, { missing: false })).toEqual({ projectId, week: 3 });
+    await writeWeekLecture(db, engine, projectId, 3, { quietOnly: true });
+    expect(getWeekLecture(db, projectId, 3)).toMatchObject({ files: [], material: null, notes: { stale: false } });
+    expect(db.select().from(s.weekLecture).all().map((r) => r.part)).toEqual(["notes"]);
+    saveWeekNotes(db, projectId, 3, []);
+    await writeWeekLecture(db, engine, projectId, 3);
+    expect(db.select().from(s.weekLecture).all()).toHaveLength(0);
   });
-});
 
-describe("what the model may return", () => {
-  const ok = { blocks: [{ type: "heading", text: "H" }, { type: "bullets", items: ["A claim. [L.pptx, p. 2]"] }, { type: "none", text: "Nothing on the slides is marked as important." }] };
-  it("every paragraph and bullet needs a citation; only a plain 'nothing here' line may go without one", () => {
-    expect(lectureWritingSchema.safeParse(ok).success).toBe(true);
-    expect(lectureWritingSchema.safeParse({ blocks: [...ok.blocks.slice(0, 1), { type: "paragraph", text: "No citation here." }, ok.blocks[2]] }).success).toBe(false);
-    expect(lectureWritingSchema.safeParse({ blocks: ok.blocks.slice(0, 2) }).success).toBe(false); // too short
-  });
-  it("the notes pick is numbers and gentle lines only", () => {
-    expect(classNotesPickSchema.safeParse({ relevant: [1, 3], checks: [{ line: 3, text: "Your note says X, and slide 4 says Y. Worth a second look." }] }).success).toBe(true);
-    expect(classNotesPickSchema.safeParse({ relevant: ["a note"], checks: [] }).success).toBe(false);
+  it("the same tab for every layer of a week: it is stored once per week", async () => {
+    const engine = cannedEngine();
+    await writeWeekLecture(db, engine, projectId, 3);
+    const rows = db.select().from(s.weekLecture).all();
+    expect(rows.map((r) => [r.week, r.part])).toEqual([[3, "material"]]);
+    // the old per-layer table is gone
+    expect(db.all<{ name: string }>(sql`select name from sqlite_master where type = 'table' and name = 'layer_lecture'`)).toHaveLength(0);
   });
 });

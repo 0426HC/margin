@@ -1,13 +1,14 @@
-import { stripInvalidCitations, invalidCitations, type SentPassage } from "./citations";
+import { stripInvalidCitations, type SentPassage } from "./citations";
 import { modelFor, type Task } from "./config";
 import type { AiRequest, Engine, StreamChunk } from "./engine";
-import { checkBrainNames, checkSorting, pageRangesOfCopies, readForBrain, pickNotes, collectSources, explainLayer, explainMissing, fixSection, findSyllabus, organizeCourse, filterNotes, weekLayers, pickSource, placeMaterial, professor, quickNotes, reexplain, reviewSynthesis, reviewWriteback, writeLecture, readExamSheet, updateExamDetails, writeExamQuestions, examineAnswers, makeAgentDocument } from "./prompts";
+import { checkBrainNames, checkSorting, pageRangesOfCopies, readForBrain, pickNotes, collectSources, explainLayer, explainMissing, fixSection, findSyllabus, organizeCourse, weekLayers, pickSource, placeMaterial, professor, quickNotes, reexplain, reviewSynthesis, reviewWriteback, lectureFromMaterial, lectureFromNotes, readExamSheet, updateExamDetails, writeExamQuestions, examineAnswers, makeAgentDocument } from "./prompts";
 import type { Passage, PromptPair } from "./prompts";
 import { checkExplained, cleanExplained, reportIsClean, type LayerNote } from "@/lib/layers/explained-check";
 import { readExplained, readSection, sectionText } from "@/lib/layers/explained-text";
 import { nameKey } from "@/lib/brain/words";
+import { FROM_NOTES, lectureProblems, stripLectureCitations } from "@/lib/lecture/text";
 import { BadStructuredOutput } from "./errors";
-import { brainNamesCheckSchema, brainNotesSchema, notePickSchema, agentDocumentSchema, classNotesPickSchema, courseCheckSchema, courseMapSchema, pageRangesSchema, syllabusPickSchema, examFeedbackSchema, examQuestionsSchema, examSummarySchema, explainMissingSchema, explainedSchema, layerBreakdownSchema, lectureWritingSchema, pickSourceSchema, placementSchema, reviewSchema, talkSourcesSchema, type ExplainedOut, type LectureWriting, type Review } from "./schemas";
+import { brainNamesCheckSchema, brainNotesSchema, notePickSchema, agentDocumentSchema, courseCheckSchema, courseMapSchema, pageRangesSchema, syllabusPickSchema, examFeedbackSchema, examQuestionsSchema, examSummarySchema, explainMissingSchema, explainedSchema, layerBreakdownSchema, pickSourceSchema, placementSchema, reviewSchema, talkSourcesSchema, type ExplainedOut, type Review } from "./schemas";
 
 // Each function binds one prompt, its Zod schema and the model for its task. Components and routes call these, never an engine directly.
 const req = (task: Task, pair: PromptPair, label: string = task): AiRequest => ({ ...pair, ...modelFor(task), task: label });
@@ -157,30 +158,41 @@ export const pickTalkSources = (e: Engine, input: Parameters<typeof collectSourc
 export const draftQuickNotes = (e: Engine, input: Parameters<typeof quickNotes>[0], signal?: AbortSignal) => e.complete(req("talk", quickNotes(input)), signal);
 
 /**
- * Write the Lecture tab from the counted facts and the layer's slides. Checked like Explained: a citation that points at nothing is asked about
- * once, then stripped, so no link to a made-up slide is ever shown. Slides and reading passages are both fair to cite.
+ * One section of a week's Lecture tab, streamed: "notes" (the student's lecture notes, expanded from the week's material) or "material"
+ * (what the lecture material spent its time on). Checked like Explained: citations that point at nothing sent, and in the notes section
+ * points with neither a citation nor the "(from your notes)" marker, are sent back once; then bad citations are stripped, so no link to a
+ * made-up page is ever kept. Uses the `lecture` model.
  */
-export async function writeLectureTab(e: Engine, input: Parameters<typeof writeLecture>[0], signal?: AbortSignal): Promise<{ writing: LectureWriting; stripped: string[] }> {
-  const sent: SentPassage[] = [...input.slides, ...input.reading];
-  const base = req("lecture", writeLecture(input));
-  const texts = (w: LectureWriting) => w.blocks.flatMap((b) => (b.type === "paragraph" ? [b.text] : b.type === "bullets" ? b.items : []));
-  let writing = await e.json(base, lectureWritingSchema, signal);
-  let bad = texts(writing).flatMap((t) => invalidCitations(t, sent));
-  if (bad.length) {
-    const retry = { ...base, prompt: `${base.prompt}\n\nYour last answer cited sources that are not in the passages: ${[...new Set(bad)].join(", ")}. Cite only the files and slide or page numbers given.` };
-    writing = await e.json(retry, lectureWritingSchema, signal);
-    bad = texts(writing).flatMap((t) => invalidCitations(t, sent));
+export async function writeLectureSection(
+  e: Engine,
+  input: { kind: "notes"; prompt: Parameters<typeof lectureFromNotes>[0] } | { kind: "material"; prompt: Parameters<typeof lectureFromMaterial>[0] },
+  { signal, onText, ...call }: CallOptions & { signal?: AbortSignal; onText?: (text: string) => void } = {},
+): Promise<string> {
+  const notes = input.kind === "notes";
+  const sent: SentPassage[] = input.kind === "notes" ? input.prompt.passages : [...input.prompt.files.flatMap((f) => f.passages), ...input.prompt.reading];
+  const base = { ...req("lecture", input.kind === "notes" ? lectureFromNotes(input.prompt) : lectureFromMaterial(input.prompt), `lecture-${input.kind}`), ...call };
+  let text = "";
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const problems = attempt ? lectureProblems(text, sent, { notes }) : null;
+    const ask = problems
+      ? {
+          ...base,
+          prompt: `${base.prompt}\n\nYour last answer had problems. Write the whole section again, fixing them.${problems.invalid.length ? `\nIt cited pages that are not in the passages: ${problems.invalid.join(", ")}. Cite only the files and pages given.` : ""}${problems.unmarked.length ? `\nThese points have neither a citation nor "${FROM_NOTES}": ${problems.unmarked.map((u) => `"${u.slice(0, 120)}"`).join("; ")}.` : ""}`,
+        }
+      : base;
+    let out = "";
+    for await (const chunk of e.stream(ask, signal)) {
+      if (chunk.type !== "text") continue;
+      out += chunk.delta;
+      onText?.(out);
+    }
+    text = out.trim();
+    const found = lectureProblems(text, sent, { notes });
+    if (!found.invalid.length && !found.unmarked.length) break;
+    console.log(`[margin ai] lecture-${input.kind}: ${found.invalid.length} bad citations, ${found.unmarked.length} unmarked points${attempt ? "; bad citations stripped" : "; written again once"}`);
   }
-  const stripped = [...new Set(bad)];
-  if (stripped.length) {
-    const fix = (t: string) => stripInvalidCitations(t, sent).text;
-    writing = { blocks: writing.blocks.map((b) => (b.type === "paragraph" ? { ...b, text: fix(b.text) } : b.type === "bullets" ? { ...b, items: b.items.map(fix) } : b)) };
-  }
-  return { writing, stripped };
+  return stripLectureCitations(text, sent);
 }
-
-/** Which of the student's class-note lines belong to a layer, by number, plus gentle second-look lines. Uses the `notes` model (Sonnet by default). */
-export const pickClassNotes = (e: Engine, input: Parameters<typeof filterNotes>[0], signal?: AbortSignal) => e.json(req("notes", filterNotes(input)), classNotesPickSchema, signal);
 
 /** The exam room. All three run on the `exam` model (Opus 5.5 at medium effort by default). */
 export const readSheet = (e: Engine, input: Parameters<typeof readExamSheet>[0], signal?: AbortSignal) => e.json(req("exam", readExamSheet(input)), examSummarySchema, signal);

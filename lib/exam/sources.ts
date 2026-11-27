@@ -6,7 +6,7 @@ import type { Block } from "@/lib/import/types";
 import { readingOrder } from "@/lib/layers/reading-order";
 import { targetStates } from "@/lib/layers/service";
 import { lectureFacts } from "@/lib/lecture/facts";
-import { slidesOf } from "@/lib/lecture/service";
+import { slidesOf } from "@/lib/lecture/sources";
 import { effectiveRole } from "@/lib/updates/classify";
 import { weekOfUnit } from "@/lib/updates/weeks";
 import type { ExamSource, ExamSummary } from "./types";

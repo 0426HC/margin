@@ -200,25 +200,6 @@ export const placementSchema = z.object({
 });
 export type Placement = z.infer<typeof placementSchema>;
 
-const lectureBlock = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("heading"), text: z.string().min(1).max(120) }),
-  z.object({ type: z.literal("paragraph"), text: cited }),
-  z.object({ type: z.literal("bullets"), items: z.array(cited).min(1) }),
-  /** A plain one-line statement that there is nothing to report ("Nothing on the slides is marked as important."). The only block allowed to go without a citation. */
-  z.object({ type: z.literal("none"), text: z.string().min(1).max(200) }),
-]);
-
-/** The Lecture tab's prose. Every paragraph and bullet cites the slides (or the reading) it comes from as [file, p. N]. */
-export const lectureWritingSchema = z.object({ blocks: z.array(lectureBlock).min(3).max(40) });
-export type LectureWriting = z.infer<typeof lectureWritingSchema>;
-export type LectureBlock = z.infer<typeof lectureBlock>;
-
-/** Which of the student's numbered class-note lines are about this layer, and where the notes and the slides seem to disagree. */
-export const classNotesPickSchema = z.object({
-  relevant: z.array(z.number().int().min(1)).max(80),
-  checks: z.array(z.object({ line: z.number().int().min(1), text: z.string().min(10).max(300) })).max(6),
-});
-export type ClassNotesPick = z.infer<typeof classNotesPickSchema>;
 export * from "./exam";
 
 /** A document an agent makes from the student's note. It may instead decline (graded work), with a plain message and something it can do instead. */

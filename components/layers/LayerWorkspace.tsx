@@ -14,13 +14,12 @@ import type { ViewMode } from "@/lib/layers/view-mode";
 import { CommandBar } from "./CommandBar";
 import { LayerLinks } from "./LayerLinks";
 import { LayerList } from "./LayerList";
-import { UpdatesDialog } from "@/components/updates/UpdatesDialog";
-import type { LectureTab } from "@/lib/lecture/service";
+import { weekHasLecture, type WeekLecture } from "@/lib/lecture/service";
 import { readExplained } from "@/lib/layers/explained-text";
 import { LayerReading } from "./LayerReading";
 import { LayerFailed, LayerProgress } from "./LayerProgress";
 import type { LayerProgress as Progress, LayerStep } from "@/lib/layers/layer-progress";
-import type { LectureStatus } from "./LectureView";
+import type { LectureState } from "./LectureView";
 import type { LayerTab } from "./reading-parts";
 import { SourceViewer, type CiteTarget } from "./SourceViewer";
 import { RightPane, useRightTab } from "./RightPane";
@@ -34,9 +33,10 @@ type Writing = "idle" | "writing" | "error";
  * One layer in the three-pane workspace: the layer list, Explained | Source, and (soon) the write-back. Calm on purpose:
  * the only motion is the tab swap, pane collapse and the panes settling once after the zoom.
  */
-export function LayerWorkspace({ model, layer, lecture, initialTab }: { model: StructureModel; layer: LayerView; lecture: LectureTab; initialTab: ViewMode }) {
+export function LayerWorkspace({ model, layer, lecture: initialLecture, initialTab }: { model: StructureModel; layer: LayerView; lecture: WeekLecture; initialTab: ViewMode }) {
   const router = useRouter();
-  const [tab, setTab] = useState<LayerTab>(initialTab);
+  const hasLecture = weekHasLecture(initialLecture);
+  const [tab, setTab] = useState<LayerTab>(initialTab === "lecture" && !hasLecture ? "explained" : initialTab);
   const [rightTab, setRightTab] = useRightTab();
   const [cited, setCited] = useState<CiteTarget | null>(null);
   const [writing, setWriting] = useState<Writing>("idle");
@@ -45,9 +45,9 @@ export function LayerWorkspace({ model, layer, lecture, initialTab }: { model: S
   const [skew, setSkew] = useState(0);
   const [kept, setKept] = useState<LayerStep[]>([]);
   const [bar, setBar] = useState(false);
-  const [adding, setAdding] = useState(false);
-  const [lectureStatus, setLectureStatus] = useState<LectureStatus>({ state: "idle" });
+  const [lecture, setLecture] = useState<LectureState>({ tab: initialLecture, writing: {}, error: null });
   const lectureAsked = useRef(false);
+  const followingLecture = useRef<AbortController | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [arrived] = useState(() => arrival.layerId === layer.id);
@@ -152,28 +152,49 @@ export function LayerWorkspace({ model, layer, lecture, initialTab }: { model: S
     void follow();
   };
 
-  // The Lecture tab is written the first time it is opened (to save cost), and its class-notes section again when the lecture notes changed.
-  const writeLecture = useCallback(async () => {
-    setLectureStatus({ state: "writing" });
+  // The week's Lecture tab: opening it writes any section that is missing or out of date (or joins the background writing it) and streams
+  // each section in as it comes. The version written before stays on screen, marked as updating, until the new text starts to arrive.
+  const week = layer.week.week;
+  const openLecture = useCallback(async () => {
+    followingLecture.current?.abort();
+    const ctl = new AbortController();
+    followingLecture.current = ctl;
+    setLecture((l) => ({ ...l, error: null }));
+    const lost = "Margin lost the connection while writing the Lecture tab. Check that the app is still running, then try again; anything already finished is kept.";
     try {
-      const r = await fetch(`/api/layers/${layer.id}/lecture`, { method: "POST" });
-      if (r.ok) {
-        setLectureStatus({ state: "idle" });
-        router.refresh();
-        return;
+      const r = await fetch(`/api/projects/${model.project.id}/weeks/${week}/lecture`, { method: "POST", signal: ctl.signal });
+      if (!r.ok || !r.body) {
+        const error = ((await r.json().catch(() => null)) as { error?: string } | null)?.error ?? "That didn't work. Try again.";
+        return setLecture((l) => ({ ...l, error }));
       }
-      setLectureStatus({ state: "error", error: ((await r.json().catch(() => null)) as { error?: string } | null)?.error ?? "That didn't work. Try again." });
+      const reader = r.body.pipeThrough(new TextDecoderStream()).getReader();
+      let buffer = "";
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += value;
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const ev = JSON.parse(line) as { type: "progress"; writing: LectureState["writing"] } | { type: "done"; tab: WeekLecture; error?: string };
+          if (ev.type === "progress") setLecture((l) => ({ ...l, writing: ev.writing }));
+          else return setLecture({ tab: ev.tab, writing: {}, error: ev.error ?? null });
+        }
+      }
+      if (!ctl.signal.aborted) setLecture((l) => ({ ...l, writing: {}, error: lost }));
     } catch {
-      setLectureStatus({ state: "error", error: "Margin lost the connection. Check that the app is still running, then try again." });
+      if (!ctl.signal.aborted) setLecture((l) => ({ ...l, writing: {}, error: lost }));
     }
-  }, [layer.id, router]);
+  }, [model.project.id, week]);
 
-  const needsLecture = tab === "lecture" && !gated && lecture.files.length > 0 && (!lecture.content || lecture.notesStale);
   useEffect(() => {
-    if (!needsLecture || lectureAsked.current) return;
+    if (tab !== "lecture" || gated || !hasLecture || lectureAsked.current) return;
     lectureAsked.current = true;
-    void writeLecture();
-  }, [needsLecture, writeLecture]);
+    void openLecture();
+  }, [tab, gated, hasLecture, openLecture]);
+  // leaving the layer closes the answer; the writing goes on and is saved
+  useEffect(() => () => followingLecture.current?.abort(), []);
 
   const choose = (t: LayerTab) => {
     if (t === tab) return;
@@ -254,10 +275,8 @@ export function LayerWorkspace({ model, layer, lecture, initialTab }: { model: S
         <LayerReading
           projectId={model.project.id}
           layerId={layer.id}
-          lecture={lecture}
-          lectureStatus={lectureStatus}
-          onAddFiles={() => setAdding(true)}
-          onRetryLecture={() => void writeLecture()}
+          lecture={hasLecture ? lecture : null}
+          onRetryLecture={() => void openLecture()}
           partLabel={here ? here.weekLabel : layer.week.label}
           title={layer.title}
           bigQuestion={layer.bigQuestion}
@@ -299,7 +318,6 @@ export function LayerWorkspace({ model, layer, lecture, initialTab }: { model: S
         </LayerReading>
       </Workspace>
       <SourceViewer projectId={model.project.id} target={cited} onClose={() => setCited(null)} />
-      <UpdatesDialog projectId={model.project.id} isDemo={model.project.isDemo} mode={adding ? "files" : null} onClose={() => setAdding(false)} />
       {bar && <CommandBar model={model} onClose={() => setBar(false)} />}
     </>
   );

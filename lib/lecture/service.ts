@@ -1,192 +1,194 @@
-import { asc, eq, inArray } from "drizzle-orm";
-import { createHash } from "node:crypto";
+import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { stripInvalidCitations } from "@/lib/ai/citations";
-import type { Engine } from "@/lib/ai/engine";
-import { pickClassNotes, writeLectureTab } from "@/lib/ai/tasks";
+import type { Engine, Priority } from "@/lib/ai/engine";
+import { requeue } from "@/lib/ai/queue";
+import { writeLectureSection } from "@/lib/ai/tasks";
 import type { Db } from "@/lib/db/client";
 import * as s from "@/lib/db/schema";
-import { effectiveRole } from "@/lib/updates/classify";
-import { getCourseWeeks } from "@/lib/updates/service";
-import { weekOfUnit } from "@/lib/updates/weeks";
-import { GateError, loadLayer, passagesOfLayer, refreshLayer, StructureError } from "@/lib/layers/service";
-import { getWeekNotes } from "@/lib/weeks/notes";
-import { lectureFacts } from "./facts";
-import type { ClassNotes, LectureSlide } from "./types";
-
-const READING_CAP = 40;
-
-interface Gathered {
-  layer: typeof s.layers.$inferSelect;
-  partOk: boolean;
-  /** The layer's passages, with what kind of file each came from. */
-  lecture: { file: string; fileId: string; page: number; text: string }[];
-  reading: { file: string; page: number; text: string }[];
-  weeks: number[];
-}
-
-/** The layer's passages split into lecture slides and readings (by the file's label), and the weeks its files belong to. */
-function gather(db: Db, layerId: string): Gathered {
-  const { layer, part } = loadLayer(db, layerId);
-  const ordered = passagesOfLayer(db, layerId);
-  const ids = ordered.map((p) => p.passageId);
-  const meta = ids.length
-    ? db
-        .select({ id: s.passages.id, fileId: s.files.id, name: s.files.name, kind: s.files.kind, pageKind: s.files.pageKind, role: s.files.role, relPath: s.files.relPath, week: s.files.week, unit: s.units.title })
-        .from(s.passages)
-        .innerJoin(s.files, eq(s.files.id, s.passages.fileId))
-        .leftJoin(s.units, eq(s.units.id, s.files.unitId))
-        .where(inArray(s.passages.id, ids))
-        .all()
-    : [];
-  const byId = new Map(meta.map((m) => [m.id, m]));
-  const lecture: Gathered["lecture"] = [];
-  const reading: Gathered["reading"] = [];
-  const weeks = new Set<number>();
-  for (const p of ordered) {
-    const m = byId.get(p.passageId);
-    if (!m) continue;
-    const w = m.week ?? (m.unit ? weekOfUnit(m.unit) : null);
-    if (w) weeks.add(w);
-    const role = effectiveRole(m);
-    if (role === "lecture") lecture.push({ file: p.file, fileId: m.fileId, page: p.page, text: p.text });
-    else if (role === "reading") reading.push({ file: p.file, page: p.page, text: p.text });
-  }
-  return { layer, partOk: part.breakdownStatus === "approved", lecture, reading, weeks: [...weeks].sort((a, b) => a - b) };
-}
-
-/** The lecture slides of a layer with their structure: each slide's heading and lines as written, read from the sections' stored blocks. */
-export function slidesOf(db: Db, lecture: Gathered["lecture"]): LectureSlide[] {
-  const pages = new Map<string, { file: string; pages: Set<number> }>();
-  for (const p of lecture) (pages.get(p.fileId) ?? pages.set(p.fileId, { file: p.file, pages: new Set() }).get(p.fileId)!).pages.add(p.page);
-  const out: LectureSlide[] = [];
-  for (const [fileId, { file, pages: wanted }] of pages) {
-    const blocks = db.select({ original: s.sections.original }).from(s.sections).where(eq(s.sections.fileId, fileId)).orderBy(asc(s.sections.position)).all().flatMap((r) => r.original);
-    const byPage = new Map<number, { heading: string | null; lines: string[] }>();
-    for (const b of blocks) {
-      if (!wanted.has(b.page)) continue;
-      const slide = byPage.get(b.page) ?? byPage.set(b.page, { heading: null, lines: [] }).get(b.page)!;
-      if (b.kind === "heading" && slide.heading === null) slide.heading = b.text;
-      else slide.lines.push(...b.text.split("\n").map((l) => l.trim()).filter(Boolean));
-    }
-    for (const page of [...byPage.keys()].sort((a, b) => a - b)) out.push({ file, page, ...byPage.get(page)! });
-  }
-  return out;
-}
-
-export const lectureFilesOf = (db: Db, layerId: string): string[] => [...new Set(gather(db, layerId).lecture.map((p) => p.file))];
-
-// ---------------------------------------------------------------- the student's own lecture notes
-
-interface Line {
-  n: number;
-  week: number;
-  text: string;
-}
-
-/** The student's lecture-notes lines for the weeks the layer draws on, numbered across weeks. */
-function noteLines(db: Db, projectId: string, weeks: number[]): Line[] {
-  const lines: Line[] = [];
-  for (const week of weeks) for (const b of getWeekNotes(db, projectId, week).blocks) if (b.text.trim()) lines.push({ n: lines.length + 1, week, text: b.text.trim() });
-  return lines;
-}
-const hashOf = (lines: Line[]) => createHash("sha256").update(JSON.stringify(lines.map((l) => [l.week, l.text]))).digest("hex").slice(0, 16);
-
-/** Choose which of the student's lines belong to this layer. The lines themselves are copied by code, exactly as written; an unknown number is dropped. */
-async function buildNotes(db: Db, engine: Engine, projectId: string, g: Gathered, lines: Line[], signal?: AbortSignal): Promise<ClassNotes> {
-  const dates = new Map(getCourseWeeks(db, projectId).weeks.map((w) => [w.week, w.date]));
-  const withNotes = new Set(lines.map((l) => l.week));
-  const base = { weeksDrawn: g.weeks, empty: g.weeks.filter((w) => !withNotes.has(w)) };
-  if (!lines.length) return { ...base, weeks: [], checks: [] };
-  const slides = g.lecture.map((p) => ({ file: p.file, page: p.page, text: p.text.slice(0, 700) }));
-  const pick = await pickClassNotes(engine, { layer: { title: g.layer.title, bigQuestion: g.layer.bigQuestion }, slides, lines }, signal);
-  const valid = new Set(lines.map((l) => l.n));
-  const chosen = new Set(pick.relevant.filter((n) => valid.has(n)));
-  return {
-    ...base,
-    weeks: g.weeks.filter((w) => withNotes.has(w)).map((week) => ({ week, date: dates.get(week) ?? null, lines: lines.filter((l) => l.week === week && chosen.has(l.n)).map((l) => l.text) })),
-    checks: pick.checks.filter((c) => valid.has(c.line)).map((c) => stripInvalidCitations(c.text, slides).text).slice(0, 3),
-  };
-}
-
-// ---------------------------------------------------------------- the Lecture tab
-
-export interface LectureTab {
-  /** The lecture files that have text in this layer. Empty: "No lecture files for this layer yet". */
-  files: string[];
-  content: { facts: s.LectureFactsJson; writing: s.LectureWritingJson; notes: ClassNotes; writtenAt: number } | null;
-  /** The lecture notes changed since the class-notes section was made, so it is made again when the tab opens. */
-  notesStale: boolean;
-}
-
-/** What the layer's Lecture tab shows now. Reads only; nothing is written and no AI is asked. */
-export function getLectureTab(db: Db, layerId: string): LectureTab {
-  const g = gather(db, layerId);
-  const files = [...new Set(g.lecture.map((p) => p.file))];
-  const row = db.select().from(s.layerLecture).where(eq(s.layerLecture.layerId, layerId)).get();
-  const stale = row ? hashOf(noteLines(db, loadLayer(db, layerId).part.projectId, g.weeks)) !== row.notesHash : false;
-  return { files, content: row ? { facts: row.facts, writing: row.writing, notes: row.notes, writtenAt: row.writtenAt } : null, notesStale: stale };
-}
-
-// on globalThis: the background worker and the routes load separate copies of this module, and must share one list
-const inflight = ((globalThis as unknown as Record<string, Map<string, Promise<void>>>).__margin_lecture_inflight__ ??= new Map<string, Promise<void>>());
+import { GateError } from "@/lib/layers/service";
+import { endLecturePart, finishLecture, setLectureText, startLecture, weekKey, type LecturePart } from "./progress";
+import { courseSources, factsByFile, hasLectureTab, LECTURE_WORDS, capWords, passagesForNotes, readingsForMaterial, type WeekSources } from "./sources";
 
 /**
- * Write the Lecture tab, once, the first time it is opened. Only the layer's files labelled Lecture are used. The numbers are counted by code;
- * the model writes the prose from them (Opus, citations checked against the slides and reading sent); a second, cheaper call picks which of
- * the student's own lecture notes belong here. Already written: the class-notes section is made again only if the lecture notes changed.
- * `force` writes it all again (Refresh this layer); the old tab stays until the new one is ready.
+ * The Lecture tab of one week, the same in every layer of that week, in two sections:
+ *  - "From your lecture notes": what the lecture covered according to the student's notes for the week, each point expanded a little from
+ *    the week's readings and lecture material and pointed back to them; points only in the notes are marked "(from your notes)".
+ *  - "From the lecture material": what the lecture material the professor posted spent its time on, what it stressed, its examples and
+ *    where it differs from the readings, with a part per lecture when the week has two.
+ * Each section is written once and stored with a hash of its sources; it is written again only when they change: the notes section once
+ * the student has stopped editing that week's notes (`schedule.ts`), the material section when the week's files change. Never on a keystroke.
  */
-export function writeLecture(db: Db, engine: Engine, layerId: string, { force = false, signal }: { force?: boolean; signal?: AbortSignal } = {}): Promise<void> {
-  const g = gather(db, layerId);
-  if (!g.partOk) throw new GateError("Approve the course plan first. Nothing is written until you do.");
-  const projectId = loadLayer(db, layerId).part.projectId;
-  const row = db.select().from(s.layerLecture).where(eq(s.layerLecture.layerId, layerId)).get();
-  if (!g.lecture.length) {
-    if (row) db.delete(s.layerLecture).where(eq(s.layerLecture.layerId, layerId)).run(); // its lecture files are gone
-    throw new StructureError("No lecture files for this layer yet. Add files labelled Lecture and they will show here.");
-  }
-  const running = inflight.get(layerId);
-  if (running) return running;
 
-  const job = (async () => {
-    const lines = noteLines(db, projectId, g.weeks);
-    if (row && !force) {
-      if (hashOf(lines) === row.notesHash) return;
-      const notes = await buildNotes(db, engine, projectId, g, lines, signal);
-      db.update(s.layerLecture).set({ notes, notesHash: hashOf(lines) }).where(eq(s.layerLecture.layerId, layerId)).run();
-      return;
+export const PARTS: LecturePart[] = ["notes", "material"];
+
+export interface LectureSection {
+  text: string;
+  writtenAt: number;
+  /** What it was written from has changed since: it is written again (the old text shows until the new one arrives). */
+  stale: boolean;
+}
+
+export interface WeekLecture {
+  week: number;
+  /** The week's lecture files, by name. None: section 2 is left out. */
+  files: string[];
+  hasNotes: boolean;
+  notes: LectureSection | null;
+  material: LectureSection | null;
+}
+
+/** Whether the course's week has a Lecture tab: lecture material or notes. Neither: its layers show only Explained and Source. */
+export const weekHasLecture = (tab: Pick<WeekLecture, "files" | "hasNotes">) => tab.files.length > 0 || tab.hasNotes;
+
+const rowsOf = (db: Db, projectId: string, week: number) => db.select().from(s.weekLecture).where(and(eq(s.weekLecture.projectId, projectId), eq(s.weekLecture.week, week))).all();
+
+function view(week: number, src: WeekSources, rows: (typeof s.weekLecture.$inferSelect)[]): WeekLecture {
+  const section = (part: LecturePart): LectureSection | null => {
+    const want = src.hash[part];
+    const row = rows.find((r) => r.part === part);
+    return want && row ? { text: row.text, writtenAt: row.writtenAt, stale: row.sourceHash !== want } : null;
+  };
+  return { week, files: [...new Set(src.lecture.map((p) => p.file))], hasNotes: src.notes.length > 0, notes: section("notes"), material: section("material") };
+}
+
+/** What the week's Lecture tab shows now. Reads only; nothing is written and no AI is asked. */
+export function getWeekLecture(db: Db, projectId: string, week: number): WeekLecture {
+  return view(week, courseSources(db, projectId).get(week) ?? { lecture: [], reading: [], notes: [], notesAt: null, hash: { notes: null, material: null } }, rowsOf(db, projectId, week));
+}
+
+/** The sections of a week that need writing: never written, or written from sources that have changed since. */
+export function partsToWrite(src: WeekSources, rows: { part: string; sourceHash: string }[]): LecturePart[] {
+  return PARTS.filter((p) => src.hash[p] && rows.find((r) => r.part === p)?.sourceHash !== src.hash[p]);
+}
+
+// ---------------------------------------------------------------- writing
+
+/** How long after the last edit of a week's notes the notes section is written again: MARGIN_LECTURE_QUIET_S (seconds), 3 minutes by default. */
+export function lectureQuietMs(env: Record<string, string | undefined> = process.env): number {
+  const n = Number(env.MARGIN_LECTURE_QUIET_S);
+  return Number.isFinite(n) && n >= 0 ? n * 1000 : 180_000;
+}
+
+/** Whether the student has stopped editing the notes: the last save is older than the quiet time, or they left the notes page since. Pure. */
+export const notesQuiet = (notesAt: number | null, now: number, quietMs: number, leftAt = 0) => notesAt === null || now - notesAt >= quietMs || leftAt >= notesAt;
+
+// on globalThis: the background worker and the routes load separate copies of this module, and must share one list
+const shared = globalThis as unknown as Record<string, unknown>;
+const inflight = (shared.__margin_lecture_inflight__ ??= new Map<string, Promise<void>>()) as Map<string, Promise<void>>;
+const priorities = (shared.__margin_lecture_priority__ ??= new Map<string, Priority>()) as Map<string, Priority>;
+/** When the student last left a week's Lecture notes page. */
+const leftAt = (shared.__margin_lecture_left__ ??= new Map<string, number>()) as Map<string, number>;
+
+export const isWritingLecture = (projectId: string, week: number) => inflight.has(weekKey(projectId, week));
+export const noteLeft = (projectId: string, week: number, at = Date.now()) => void leftAt.set(weekKey(projectId, week), at);
+export const leftNotesAt = (projectId: string, week: number) => leftAt.get(weekKey(projectId, week)) ?? 0;
+
+/** The course name and the week as the syllabus gives it, for the prompts. */
+function weekFacts(db: Db, projectId: string, week: number) {
+  const course = db.select({ name: s.projects.name }).from(s.projects).where(eq(s.projects.id, projectId)).get()?.name ?? "";
+  const row = db.select().from(s.courseWeeks).where(and(eq(s.courseWeeks.projectId, projectId), eq(s.courseWeeks.week, week))).get();
+  return { course, week, title: row?.title ?? "", syllabus: row?.syllabus ?? "" };
+}
+
+const asPassage = (p: { file: string; page: number; text: string }) => ({ file: p.file, page: p.page, text: p.text });
+
+async function writePart(db: Db, engine: Engine, projectId: string, week: number, part: LecturePart, src: WeekSources, signal?: AbortSignal) {
+  const key = weekKey(projectId, week);
+  const call = { signal, priority: () => priorities.get(key) ?? "background", onText: (t: string) => setLectureText(key, part, t) };
+  const facts = weekFacts(db, projectId, week);
+  const text =
+    part === "notes"
+      ? await writeLectureSection(engine, { kind: "notes", prompt: { week: facts, notes: src.notes, passages: passagesForNotes(db, projectId, src).map(asPassage) } }, call)
+      : await writeLectureSection(
+          engine,
+          {
+            kind: "material",
+            prompt: {
+              week: facts,
+              files: factsByFile(db, src.lecture).map(({ file, facts: f }) => ({ file, facts: f, passages: capWords(src.lecture, LECTURE_WORDS).filter((p) => p.file === file).map(asPassage) })),
+              reading: readingsForMaterial(db, projectId, src).map(asPassage),
+            },
+          },
+          call,
+        );
+  // the sources may have changed while it was written: it is stored with the hash it was written from, so it is written again if so
+  db.insert(s.weekLecture)
+    .values({ id: nanoid(10), projectId, week, part, text, sourceHash: src.hash[part]!, writtenAt: Date.now() })
+    .onConflictDoUpdate({ target: [s.weekLecture.projectId, s.weekLecture.week, s.weekLecture.part], set: { text, sourceHash: src.hash[part]!, writtenAt: Date.now() } })
+    .run();
+}
+
+/**
+ * Write whichever sections of a week's Lecture tab are missing or out of date, side by side, streaming each into the page as it comes
+ * (`progress.ts`). A section whose sources are gone (the notes emptied, the lecture files removed) is deleted. `quietOnly` (the background)
+ * leaves the notes section while the student is still editing them. Already being written: joined, and moved to "now" if the student opened it.
+ * A section that fails keeps its old text; the error is passed on after the other section is saved.
+ */
+export function writeWeekLecture(db: Db, engine: Engine, projectId: string, week: number, { priority = "background", quietOnly = false, signal }: { priority?: Priority; quietOnly?: boolean; signal?: AbortSignal } = {}): Promise<void> {
+  const key = weekKey(projectId, week);
+  const running = inflight.get(key);
+  if (running) {
+    if (priority === "now" && priorities.get(key) !== "now") {
+      priorities.set(key, "now");
+      requeue();
     }
-    const facts = lectureFacts(slidesOf(db, g.lecture));
-    const { writing } = await writeLectureTab(
-      engine,
-      {
-        layer: { title: g.layer.title, bigQuestion: g.layer.bigQuestion },
-        facts,
-        slides: g.lecture.map((p) => ({ file: p.file, page: p.page, text: p.text })),
-        reading: g.reading.slice(0, READING_CAP),
-      },
-      signal,
+    return running;
+  }
+  const part = db.select({ status: s.parts.breakdownStatus }).from(s.parts).where(and(eq(s.parts.projectId, projectId), eq(s.parts.week, week))).get();
+  if (part?.status !== "approved") throw new GateError("Approve the course plan first. Nothing is written until you do.");
+  const src = courseSources(db, projectId).get(week);
+  const rows = rowsOf(db, projectId, week);
+  for (const r of rows) if (!src?.hash[r.part]) db.delete(s.weekLecture).where(eq(s.weekLecture.id, r.id)).run();
+  if (!src || !hasLectureTab(src)) return Promise.resolve();
+  const parts = partsToWrite(src, rows).filter((p) => p !== "notes" || !quietOnly || notesQuiet(src.notesAt, Date.now(), lectureQuietMs(), leftNotesAt(projectId, week)));
+  if (!parts.length) return Promise.resolve();
+
+  priorities.set(key, priority);
+  startLecture(key, parts);
+  const job = (async () => {
+    const results = await Promise.allSettled(
+      parts.map((p) =>
+        writePart(db, engine, projectId, week, p, src, signal).finally(() => endLecturePart(key, p)),
+      ),
     );
-    const notes = await buildNotes(db, engine, projectId, g, lines, signal);
-    db.transaction((tx) => {
-      tx.delete(s.layerLecture).where(eq(s.layerLecture.layerId, layerId)).run();
-      tx.insert(s.layerLecture).values({ id: nanoid(10), layerId, facts, writing, notes, notesHash: hashOf(lines) }).run();
-    });
-  })().finally(() => inflight.delete(layerId));
-  inflight.set(layerId, job);
+    const failed = results.find((r): r is PromiseRejectedResult => r.status === "rejected");
+    if (failed) throw failed.reason;
+  })().finally(() => {
+    inflight.delete(key);
+    priorities.delete(key);
+    finishLecture(key);
+  });
+  inflight.set(key, job);
   return job;
 }
 
 /**
- * "Refresh this layer": Explained is written again, and so is the Lecture tab if it had been written. The student's write-up, saved version
- * and chat are never touched. Lecture notes are only read, never changed.
+ * The next week whose Lecture tab the background should write, or null: first a section written before whose sources have changed (the
+ * week's files changed, or the notes, once the student stopped editing them), then, with `missing`, a section never written, in approved
+ * weeks whose layers are all written. Demo courses are left alone (their tabs are written when opened).
  */
-export async function refreshLayerAndLecture(db: Db, engine: Engine, layerId: string, signal?: AbortSignal): Promise<void> {
-  await refreshLayer(db, engine, layerId, signal);
-  const had = db.select({ id: s.layerLecture.id }).from(s.layerLecture).where(eq(s.layerLecture.layerId, layerId)).get();
-  if (!had) return;
-  if (!lectureFilesOf(db, layerId).length) db.delete(s.layerLecture).where(eq(s.layerLecture.layerId, layerId)).run();
-  else await writeLecture(db, engine, layerId, { force: true, signal });
+export function nextLectureWeek(db: Db, { missing, firstProject = null, skip = () => false }: { missing: boolean; firstProject?: string | null; skip?: (projectId: string, week: number) => boolean }): { projectId: string; week: number } | null {
+  const projects = db.select({ id: s.projects.id, createdAt: s.projects.createdAt }).from(s.projects).where(and(eq(s.projects.isDemo, false), eq(s.projects.status, "ready"))).all();
+  projects.sort((a, b) => Number(b.id === firstProject) - Number(a.id === firstProject) || b.createdAt - a.createdAt);
+  const now = Date.now();
+  for (const p of projects) {
+    const approved = db.select({ id: s.parts.id, week: s.parts.week }).from(s.parts).where(and(eq(s.parts.projectId, p.id), eq(s.parts.breakdownStatus, "approved"))).all();
+    if (!approved.length) continue;
+    const rows = db.select({ week: s.weekLecture.week, part: s.weekLecture.part, sourceHash: s.weekLecture.sourceHash }).from(s.weekLecture).where(eq(s.weekLecture.projectId, p.id)).all();
+    const unwritten = missing
+      ? new Set(db.select({ partId: s.layers.partId }).from(s.layers).where(and(eq(s.layers.contentStatus, "none"), eq(s.layers.proposed, false))).all().map((r) => r.partId))
+      : new Set<string>();
+    const sources = courseSources(db, p.id);
+    for (const row of approved.sort((a, b) => (a.week ?? 0) - (b.week ?? 0))) {
+      const week = row.week;
+      if (week === null || isWritingLecture(p.id, week) || skip(p.id, week)) continue;
+      const src = sources.get(week);
+      if (!src || !hasLectureTab(src)) continue;
+      const mine = rows.filter((r) => r.week === week);
+      const due = partsToWrite(src, mine).filter((part) => part !== "notes" || notesQuiet(src.notesAt, now, lectureQuietMs(), leftNotesAt(p.id, week)));
+      const stale = due.filter((part) => mine.some((r) => r.part === part));
+      if (stale.length || (missing && due.length && !unwritten.has(row.id))) return { projectId: p.id, week };
+    }
+  }
+  return null;
 }
-

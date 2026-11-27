@@ -77,7 +77,7 @@ export function WeeksSection({ model, weeks, view, embedded = false }: { model: 
                 <Segmented label="Weeks" idPrefix="week-tab" panelId="week-panel" value={String(week)} onChange={(v) => choose(Number(v))} options={weeks.map((w) => ({ value: String(w.week), label: `Week ${w.week}` }))} />
               </div>
             </div>
-            <NotepadTab key={week} projectId={projectId} endpoint={`/api/projects/${projectId}/weeks/${week}/notes`} name={`Notes for Week ${week}`} panelId="week-panel" labelledBy={`week-tab-${week}`} />
+            <NotepadTab key={week} projectId={projectId} endpoint={`/api/projects/${projectId}/weeks/${week}/notes`} name={`Notes for Week ${week}`} panelId="week-panel" labelledBy={`week-tab-${week}`} tellLeave />
           </>
         )}
       </section>

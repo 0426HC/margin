@@ -138,7 +138,8 @@ export function LayerFrame() {
                     onChange={noop}
                     options={[
                       { value: "explained", label: "Explained" },
-                      { value: "lecture", label: "Lecture" },
+                      // a week with neither lecture material nor lecture notes has no Lecture tab
+                      ...(model?.weeks.find((w) => w.week === here?.week)?.lecture === false ? [] : [{ value: "lecture", label: "Lecture" }]),
                       { value: "source", label: "Source" },
                     ]}
                   />

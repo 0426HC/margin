@@ -6,7 +6,7 @@ import { EngineError, UsageLimitReached, resetTime } from "@/lib/ai/errors";
 import type { Db } from "@/lib/db/client";
 import { dataDir } from "@/lib/db/paths";
 import * as s from "@/lib/db/schema";
-import { lectureFilesOf, writeLecture } from "@/lib/lecture/service";
+import { nextLectureWeek, writeWeekLecture } from "@/lib/lecture/service";
 import { checkCoursePages, coursesToCheck } from "@/lib/projects/page-ranges-check";
 import { nextBrainFile } from "@/lib/brain/queue";
 import { readIntoBrain } from "@/lib/brain/read";
@@ -22,8 +22,9 @@ import { checkLayerConcepts, GateError, getStructure, isWriting, layersAwaitingC
  * file in full (`lib/brain`): files a layer being written needs first, then the current week's, the next week's, then the rest.
  *
  * The layer lane: layers the student opened (and the one after each) first; then the named-things check of layers written before the brain
- * had read their files; then, once a course plan is approved, every other layer in course order (current week, next week, the rest), so
- * each is finished before the student reaches it. A layer the student opens is never queued: it is written at once, its calls before any
+ * had read their files; then week Lecture tabs whose notes or files changed; then, once a course plan is approved, every other layer in
+ * course order (current week, next week, the rest), so each is finished before the student reaches it; then the Lecture tabs of weeks
+ * whose layers are all written. A layer the student opens is never queued: it is written at once, its calls before any
  * background call (lib/ai/queue.ts).
  *
  * The queue is the database itself (every approved layer not written yet, every unread file), so it survives quitting Margin; only the
@@ -191,12 +192,6 @@ async function writeOne(db: Db, engine: Engine, layerId: string) {
   try {
     await writeLayerContent(db, engine, layerId, { priority: "background" });
     console.log(`[margin background] layer ${layerId} written · ${((Date.now() - started) / 1000).toFixed(1)}s`);
-    // its Lecture tab too, when the layer has lecture files
-    const written = db.select({ id: s.layerLecture.id }).from(s.layerLecture).where(eq(s.layerLecture.layerId, layerId)).get();
-    if (!written && lectureFilesOf(db, layerId).length) await writeLecture(db, engine, layerId).catch((e: unknown) => {
-      if (e instanceof UsageLimitReached) throw e;
-      // a Lecture tab that fails is written again when the tab is opened
-    });
   } catch (e) {
     if (e instanceof UsageLimitReached) return pause(e);
     st.resting.set(layerId, Date.now() + REST_MS);
@@ -216,6 +211,28 @@ async function conceptStep(db: Db, engine: Engine): Promise<boolean> {
   } catch (e) {
     if (e instanceof UsageLimitReached) pause(e);
     else st.resting.set(`concepts:${next}`, Date.now() + REST_MS);
+  }
+  return true;
+}
+
+/**
+ * The week Lecture tab step: a section whose notes or files changed (the notes only once the student stopped editing them), or with
+ * `missing` a section never written, in a week whose layers are all written. A failure leaves that week for a while. False: nothing to do.
+ */
+async function lectureStep(db: Db, engine: Engine, missing: boolean): Promise<boolean> {
+  const st = state();
+  const next = nextLectureWeek(db, { missing, firstProject: st.firstProject, skip: (p, w) => (st.resting.get(`lecture:${p}:${w}`) ?? 0) > Date.now() });
+  if (!next) return false;
+  const started = Date.now();
+  try {
+    await writeWeekLecture(db, engine, next.projectId, next.week, { quietOnly: true });
+    console.log(`[margin background] week ${next.week} Lecture tab written · ${((Date.now() - started) / 1000).toFixed(1)}s`);
+  } catch (e) {
+    if (e instanceof UsageLimitReached) pause(e);
+    else {
+      st.resting.set(`lecture:${next.projectId}:${next.week}`, Date.now() + REST_MS);
+      console.log(`[margin background] week ${next.week} Lecture tab not written (${e instanceof EngineError ? e.code : e instanceof Error ? e.name : "Failed"}); tried again later or when it is opened`);
+    }
   }
   return true;
 }
@@ -313,7 +330,7 @@ async function brainLane() {
   }
 }
 
-/** The layer lane: layers the student is heading for, then named-things checks the brain has caught up with, then the rest of the layers. */
+/** The layer lane: layers the student is heading for, named-things checks the brain has caught up with, changed Lecture tabs, the rest of the layers, then new Lecture tabs. */
 async function layerLane() {
   const st = state();
   while (await waitOutPause(st)) {
@@ -322,7 +339,10 @@ async function layerLane() {
     try {
       const front = st.front.find((id) => !isWriting(id) && pendingLayers(db, st.firstProject).includes(id) && !((st.resting.get(id) ?? 0) > Date.now()));
       if (!front && (await conceptStep(db, st.engine!()))) continue;
+      // a week's Lecture tab whose notes or files changed comes before writing ahead; one never written comes after every layer
+      if (!front && (await lectureStep(db, st.engine!(), false))) continue;
       next = front ?? pick(db);
+      if (!next && (await lectureStep(db, st.engine!(), true))) continue;
     } catch (e) {
       console.log(`[margin background] could not read the layer queue: ${e instanceof Error ? e.message : String(e)}`);
     }

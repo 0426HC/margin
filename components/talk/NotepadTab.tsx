@@ -53,22 +53,24 @@ type Status = "loading" | "saved" | "saving" | "error";
  * One never-ending page per project, autosaved. Headings and bullets from the buttons; everything else is plain text. A search box
  * highlights matches on the page and lists the lines that contain them.
  */
-export function NotepadTab({ projectId, endpoint = `/api/projects/${projectId}/notepad`, name = "Notepad", panelId = "talk-panel-notepad", labelledBy = "talk-tab-notepad" }: { projectId: string; /** Where the page is read and saved. The Let's talk! notepad by default; the lecture notes use one page per week. */ endpoint?: string; name?: string; panelId?: string; labelledBy?: string }) {
+export function NotepadTab({ projectId, endpoint = `/api/projects/${projectId}/notepad`, name = "Notepad", panelId = "talk-panel-notepad", labelledBy = "talk-tab-notepad", tellLeave = false }: { projectId: string; /** Where the page is read and saved. The Let's talk! notepad by default; the lecture notes use one page per week. */ endpoint?: string; name?: string; panelId?: string; labelledBy?: string; /** Lecture notes: leaving a page edited this visit says so (`left`), so the week's Lecture tab is written again now, not after the quiet time. */ tellLeave?: boolean }) {
   const page = useRef<HTMLDivElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const dirty = useRef(false);
+  /** Edited during this visit, and the page has its stored text (so a page that never loaded is never saved over). */
+  const edited = useRef(false);
   const [status, setStatus] = useState<Status>("loading");
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<{ index: number; text: string }[]>([]);
 
   const save = useCallback(
-    async (keepalive = false) => {
-      if (!page.current || !dirty.current) return;
+    async (keepalive = false, left = false) => {
+      if (!page.current || (!dirty.current && !(left && edited.current))) return;
       const blocks = readPage(page.current).map((x) => x.block);
       if (!noteBlocksSchema.safeParse(blocks).success) return setStatus("error");
       dirty.current = false;
       try {
-        const r = await fetch(endpoint, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ blocks }), keepalive });
+        const r = await fetch(endpoint, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(left ? { blocks, left } : { blocks }), keepalive });
         if (!r.ok) throw new Error();
         setStatus(dirty.current ? "saving" : "saved");
       } catch {
@@ -90,16 +92,16 @@ export function NotepadTab({ projectId, endpoint = `/api/projects/${projectId}/n
         setStatus("saved");
       })
       .catch(() => !gone && setStatus("error"));
-    const onHide = () => void save(true);
+    const onHide = () => void save(true, tellLeave);
     window.addEventListener("pagehide", onHide);
     const el = page.current;
     return () => {
       gone = true;
       window.removeEventListener("pagehide", onHide);
       clearTimeout(timer.current);
-      if (el && dirty.current) void save(true);
+      if (el && (dirty.current || (tellLeave && edited.current))) void save(true, tellLeave);
     };
-  }, [endpoint, save]);
+  }, [endpoint, save, tellLeave]);
 
   const highlight = useCallback((q: string) => {
     const root = page.current;
@@ -152,6 +154,7 @@ export function NotepadTab({ projectId, endpoint = `/api/projects/${projectId}/n
   const changed = () => {
     arrows();
     dirty.current = true;
+    edited.current = true;
     setStatus("saving");
     clearTimeout(timer.current);
     timer.current = setTimeout(() => void save(), 800);

@@ -21,7 +21,7 @@ import { duplicatePairs, duplicateReasons } from "./duplicates";
 import { migratePartsToWeeks } from "./migrate-weeks";
 import { passageWeeks } from "./passage-weeks";
 import { countStates, type LayerState } from "./progress";
-import { courseOrder, readingOrder, wordsOf } from "./reading-order";
+import { courseOrder, isCourseMaterial, readingOrder, wordsOf } from "./reading-order";
 import { blocksForPassages, type QuoteBlock } from "./source-blocks";
 import type { LayerView, OptionalQuote, OrderedPassage, StructureLayer, StructureModel, StructureWeek } from "./types";
 import { validateBreakdown } from "./validate-breakdown";
@@ -130,6 +130,10 @@ export function getStructure(db: Db, projectId: string): StructureModel | null {
   const count = courseWeekCount(db, projectId) ?? 0;
   const top = Math.max(count, 0, ...rows.map((r) => r.week!));
   const materialWeeks = new Set([...weekOf.values()]);
+  const lectureWeeks = new Set([
+    ...[...all.values()].filter((p) => p.role === "lecture" && isCourseMaterial(p.category)).map((p) => weekOf.get(p.passageId)),
+    ...db.select({ week: s.weekNotes.week, blocks: s.weekNotes.blocks }).from(s.weekNotes).where(eq(s.weekNotes.projectId, projectId)).all().filter((r) => r.blocks.some((b) => b.text.trim())).map((r) => r.week),
+  ]);
 
   const byWeek = new Map(rows.map((r) => [r.week!, r]));
   const weeks: StructureWeek[] = [];
@@ -166,6 +170,7 @@ export function getStructure(db: Db, projectId: string): StructureModel | null {
       label,
       status: row?.breakdownStatus ?? "approved",
       hasMaterial: layers.length > 0 || materialWeeks.has(w),
+      lecture: lectureWeeks.has(w),
       words: layers.reduce((n, l) => n + l.words, 0),
       layers,
       progress: countStates(layers.map((l) => l.state)),

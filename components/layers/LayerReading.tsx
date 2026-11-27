@@ -10,8 +10,7 @@ import type { SourceQuote } from "@/lib/db/schema";
 import type { CiteHandler } from "@/components/ui/Citation";
 import { Segmented } from "@/components/ui/Segmented";
 import { MarginRow, type MarginMark } from "@/components/workspace/MarginGutter";
-import type { LectureTab } from "@/lib/lecture/service";
-import { LectureView, type LectureStatus } from "./LectureView";
+import { LectureView, type LectureState } from "./LectureView";
 import { FullReadingSwitch, FullReadingView } from "./FullReading";
 import { citeKey, liftCitations, useSwap, type LayerTab } from "./reading-parts";
 
@@ -199,8 +198,6 @@ export function LayerReading({
   projectId,
   layerId,
   lecture,
-  lectureStatus,
-  onAddFiles,
   onRetryLecture,
   partLabel,
   title,
@@ -219,9 +216,8 @@ export function LayerReading({
 }: {
   projectId: string;
   layerId: string;
-  lecture: LectureTab;
-  lectureStatus: LectureStatus;
-  onAddFiles: () => void;
+  /** The week's Lecture tab. Null: the week has neither lecture material nor lecture notes, so there is no Lecture tab. */
+  lecture: LectureState | null;
   onRetryLecture: () => void;
   partLabel: string;
   title: string;
@@ -280,20 +276,20 @@ export function LayerReading({
                   onChange={onTab}
                   options={[
                     { value: "explained", label: "Explained" },
-                    { value: "lecture", label: "Lecture" },
+                    ...(lecture ? [{ value: "lecture" as const, label: "Lecture" }] : []),
                     { value: "source", label: "Source" },
                   ]}
                 />
                 <p className="m-bar-note" aria-live="polite">
-                  {tab === "explained" ? "In plain English. Each page number in the margin jumps to the source." : tab === "lecture" ? "What the lecture did with this topic, counted from your slides." : "The exact text from your files, with its file and page."}
+                  {tab === "explained" ? "In plain English. Each page number in the margin jumps to the source." : tab === "lecture" ? "This week’s lecture, from your notes and the lecture material." : "The exact text from your files, with its file and page."}
                 </p>
               </div>
               <div className="m-body">
                 <AnimatePresence mode="wait" initial={false}>
                   {tab === "explained" ? (
                     <ExplainedView key="explained" explained={explained} optional={optional} onCite={onCite} onMounted={mountedExplained} />
-                  ) : tab === "lecture" ? (
-                    <LectureView key="lecture" projectId={projectId} lecture={lecture} status={lectureStatus} onCite={onCite} onMounted={mountedLecture} onAddFiles={onAddFiles} onRetry={onRetryLecture} />
+                  ) : tab === "lecture" && lecture ? (
+                    <LectureView key="lecture" projectId={projectId} state={lecture} onCite={onCite} onMounted={mountedLecture} onRetry={onRetryLecture} />
                   ) : (
                     <SourceView key="source" layerId={layerId} quotes={source} optional={optional} onMounted={mountedSource} />
                   )}

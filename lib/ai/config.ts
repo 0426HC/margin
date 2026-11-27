@@ -1,7 +1,7 @@
 import type { Effort } from "./engine";
 
 // Which model and effort each kind of task uses. Env variables override the defaults.
-export type Task = "review" | "explain" | "organize" | "check" | "structure" | "talk" | "lecture" | "notes" | "exam" | "request" | "brain";
+export type Task = "review" | "explain" | "organize" | "check" | "structure" | "talk" | "lecture" | "exam" | "request" | "brain";
 
 const EFFORTS: Effort[] = ["low", "medium", "high", "xhigh", "max"];
 
@@ -22,14 +22,13 @@ const DEFAULTS: Record<Task, { model: string; effort?: Effort }> = {
   structure: { model: "claude-opus-5-5", effort: "medium" },
   // Let's talk!
   talk: { model: "sonnet" },
-  // The Lecture tab of a layer: written like Explained, so it gets the same model and effort.
+  // The Lecture tab of a week: the student's lecture notes expanded from the week's material, and what the lecture material spent its
+  // time on. Careful reading of slides against readings, written once per week, so Opus at medium effort.
   lecture: { model: "claude-opus-5-5", effort: "medium" },
   // The exam room: reading the sheet, writing the practice questions, and the Examiner's feedback on answers.
   exam: { model: "claude-opus-5-5", effort: "medium" },
   // A document an agent makes from a note the student leaves on the overview (study guide, checklist, connections).
   request: { model: "claude-opus-5-5", effort: "medium" },
-  // Choosing which of the student's own lecture notes belong to a layer (the lines themselves are copied by code).
-  notes: { model: "sonnet" },
   // The course brain: reading every course file in full, in the background, and writing notes on what matters in it. Many calls, so Sonnet.
   brain: { model: "sonnet" },
 };

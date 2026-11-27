@@ -2,11 +2,13 @@ import type { AiRequest } from "./engine";
 import { ClaudeBusy, EngineError, UsageLimitReached } from "./errors";
 import { FakeEngine } from "./fake-engine";
 import { COURSE_TYPES, type FileType } from "@/lib/projects/file-kinds";
+import { FROM_NOTES } from "@/lib/lecture/text";
 
 /**
  * Failures on purpose, for tests of what the student sees: a layer whose title says "(fake: usage limit)", "(fake: busy)" or "(fake: error)"
  * fails that way when its Source or Explained is written; "(fake: hang)" never answers (see cannedEngine), so Margin's quiet limit is hit;
- * "(fake: slow)" streams its Explained over about ten seconds, so the page can be used while it is written.
+ * "(fake: slow)" streams its Explained over about ten seconds, so the page can be used while it is written (and lecture notes that say
+ * "(fake: slow)" stream the Lecture tab's notes section over about twenty).
  */
 /** The layer's title line of a Source or Explained prompt. */
 const layerLine = (req: AiRequest) => (req.prompt.split("## Layer\n")[1] ?? "").split("\n")[0];
@@ -180,41 +182,6 @@ export function cannedJson(req: AiRequest): unknown {
     }
     return { placements: groups.length ? groups : [{ layer: 0, title: "New material", bigQuestion: "What does the new material add?", buildsOn: "", ranges: [{ from: 1, to: 1 }] }] };
   }
-  if (req.system.includes('write the "Lecture" tab')) {
-    // Written from the counted facts in the prompt, so the offline tab says true things about the real slides.
-    const facts = req.prompt.split("## Counted by Margin\n")[1]?.split("\n\n## ")[0] ?? "";
-    const slideFile = req.prompt.split("## Lecture material\n")[1]?.match(/\[([^\]\n]+), p\. \d+\]/)?.[1] ?? "";
-    const readingCite = req.prompt.split("## Reading passages\n")[1]?.match(/\[[^\]\n]+, p\. \d+\]/)?.[0];
-    const at = (page: string | number) => `[${slideFile}, p. ${page}]`;
-    const terms = [...facts.matchAll(/([a-z][a-z-]+) \((\d+) slides: ([\d, ]+)\)/g)].slice(0, 2);
-    const phrases = [...facts.matchAll(/"([^"]+)" \(slides ([\d, ]+)\)/g)].slice(0, 2);
-    const lines = (head: string) => (facts.split(head)[1]?.split("\n").slice(1) ?? []).filter((l) => l.startsWith("- [")).map((l) => l.replace(/^- \[[^\]]+, p\. (\d+)\] (.*)$/, (_, p: string, x: string) => `${x} ${at(p)}`));
-    const flagged = lines("Lines the slides mark as important:");
-    const examples = lines("Lines that introduce an example:");
-    const none = (text: string) => ({ type: "none" as const, text });
-    return {
-      blocks: [
-        { type: "heading", text: "Where the lecture spent its time" },
-        terms.length ? { type: "bullets", items: terms.map((m) => `The lecture comes back to ${m[1]} on ${m[2]} slides. ${at(m[3].split(",")[0].trim())}`) } : none("No single idea gets more than one slide."),
-        { type: "heading", text: "What it repeated" },
-        phrases.length ? { type: "bullets", items: phrases.map((m) => `The slides repeat “${m[1]}”. ${at(m[2].split(",")[0].trim())}`) } : none("No phrase is repeated across slides."),
-        { type: "heading", text: "What it flagged as important" },
-        flagged.length ? { type: "bullets", items: flagged } : none("Nothing on the slides is marked as important."),
-        { type: "heading", text: "The examples it used" },
-        examples.length ? { type: "bullets", items: examples } : none("No slide introduces an example in so many words."),
-        { type: "heading", text: "Where it differs from the reading" },
-        readingCite ? { type: "bullets", items: [`The slides put the argument in shorter steps than the reading does. ${at(req.prompt.split("## Lecture material\n")[1]?.match(/p\. (\d+)\]/)?.[1] ?? 1)} ${readingCite}`] } : none("This layer has no reading passages to compare with."),
-      ],
-    };
-  }
-  if (req.system.includes("You choose which of a student's own class notes")) {
-    const lines = [...req.prompt.matchAll(/^(\d+) \| Week \d+ \| (.*)$/gm)].map((m) => ({ n: Number(m[1]), text: m[2] }));
-    const slide = req.prompt.split("## Lecture material\n")[1]?.match(/\[[^\]\n]+, p\. \d+\]/)?.[0];
-    // a note line is about the layer unless it says it is off topic; one that says DIFFERS gets a gentle second-look line
-    const relevant = lines.filter((l) => !/off topic/i.test(l.text)).map((l) => l.n);
-    const checks = lines.filter((l) => /DIFFERS/.test(l.text) && slide).map((l) => ({ line: l.n, text: `Your note says something different from the slides. ${slide} Worth a second look.` }));
-    return { relevant, checks };
-  }
   if (req.system.includes("You read an exam instruction sheet")) {
     const sheet = req.prompt.split("## The sheet\n")[1] ?? "";
     const minutes = Number(/(\d+)\s*(?:minutes|mins)/i.exec(sheet)?.[1]) || null;
@@ -333,10 +300,67 @@ function cannedExplained(req: AiRequest): string {
   return ["# Summary", "This layer asks one question and answers it in plain words. It starts from the basics and builds up to the course's own terms.", ...sections, "# So what", "This layer connects to the week's question and to the course's larger argument."].join("\n\n");
 }
 
+/** The passages of a prompt section, as [file, p. N] with their text. */
+function promptPassages(body: string): { cite: string; file: string; text: string }[] {
+  return [...body.matchAll(/^\[([^\]\n]+), p\. (\d+)\]\n([^\n]*)/gm)].map((m) => ({ cite: `[${m[1]}, p. ${m[2]}]`, file: m[1], text: m[3] }));
+}
+const sectionOf = (prompt: string, title: string) => (prompt.split(`## ${title}\n`)[1] ?? "").split("\n\n## ")[0];
+const longWords = (t: string) => new Set(t.toLowerCase().match(/[a-z]{7,}/g) ?? []);
+
+/**
+ * "From your lecture notes": each note line expanded from the first passage that shares a word with it, cited; a line nothing in the files
+ * is about is kept as written and marked "(from your notes)". Only what the student wrote, nothing added.
+ */
+function cannedLectureNotes(req: AiRequest): string {
+  const notes = sectionOf(req.prompt, "The student's lecture notes, as written").split("\n").map((l) => l.trim()).filter(Boolean);
+  const passages = promptPassages(sectionOf(req.prompt, "Passages from this week's readings and lecture material about these notes"));
+  const out = ["### What the lecture covered"];
+  for (const line of notes) {
+    if (line.startsWith("# ")) {
+      out.push(`### ${line.slice(2)}`);
+      continue;
+    }
+    const point = line.replace(/^-\s*/, "").replace(/[.\s]+$/, "");
+    const words = longWords(point);
+    const hit = passages.find((p) => [...longWords(p.text)].some((w) => words.has(w)));
+    out.push(hit ? `- Your note "${point}" is about this: ${hit.text.split(/\s+/).slice(0, 14).join(" ")}… ${hit.cite}` : `- ${point}. ${FROM_NOTES}`);
+  }
+  return out.join("\n");
+}
+
+/** "From the lecture material": the four topics from the counted facts, with a part per lecture file when there are two or more. */
+function cannedLectureMaterial(req: AiRequest): string {
+  const files = [...req.prompt.matchAll(/^## Lecture file: (.+)$/gm)].map((m) => m[1]);
+  const reading = promptPassages(sectionOf(req.prompt, "Reading passages"))[0]?.cite;
+  const parts = files.map((file) => {
+    const body = sectionOf(req.prompt, `Lecture file: ${file}`);
+    const pages = promptPassages(body).map((p) => p.cite);
+    const at = pages[0] ?? "";
+    const terms = [...body.matchAll(/([a-z][a-z-]+) \((\d+) slides: (\d+)/g)].slice(0, 2);
+    const flagged = (body.split("Lines the material marks as important:\n")[1] ?? "").split("\n").filter((l) => l.startsWith("- [")).map((l) => l.slice(2));
+    const examples = (body.split("Lines that introduce an example:\n")[1] ?? "").split("\n").filter((l) => l.startsWith("- [")).map((l) => l.slice(2));
+    const moved = (l: string) => l.replace(/^(\[[^\]]+, p\. \d+\]) (.*)$/, "$2 $1");
+    return [
+      files.length > 1 ? `## ${file.replace(/\.[a-z0-9]+$/i, "")}` : "",
+      "### What it spent its time on",
+      terms.length ? terms.map((m) => `- The lecture comes back to ${m[1]} on ${m[2]} slides. [${file}, p. ${m[3]}]`).join("\n") : `The material moves through its topics one slide at a time. ${at}`,
+      "### What it stressed",
+      flagged.length ? flagged.map((l) => `- ${moved(l)}`).join("\n") : "Nothing in the material is marked as important.",
+      "### The examples it used",
+      examples.length ? examples.map((l) => `- ${moved(l)}`).join("\n") : "No slide introduces an example in so many words.",
+      "### Where it differs from the readings",
+      reading ? `The slides put the argument in shorter steps than the reading does. ${at} ${reading}` : "There are no readings this week to compare with.",
+    ].filter(Boolean).join("\n\n");
+  });
+  return parts.join("\n\n");
+}
+
 /** Streamed text. The professor answers from the first passage it was sent and cites it; Explained and its fixes come in their text format; everything else gets the plain canned line. */
 export function cannedText(req: AiRequest): string {
   cannedFailure(req);
   if (req.system.includes('write the "Explained" tab')) return cannedExplained(req);
+  if (req.system.includes('write the "From your lecture notes" section')) return cannedLectureNotes(req);
+  if (req.system.includes('write the "From the lecture material" section')) return cannedLectureMaterial(req);
   if (req.system.includes("You fix one section")) {
     const question = /## The section to write again\n## ([^\n]+)/.exec(req.prompt)?.[1] ?? "What does this part answer?";
     return `## ${question}\n\nThis section was written again so that every claim rests on the passages, building step by step on the one before it. ${passageCites(req)[0] ?? ""}`.trim();
@@ -358,6 +382,7 @@ export const cannedEngine = (delayMs = Number(process.env.MARGIN_FAKE_DELAY_MS ?
     json: cannedJson,
     text: cannedText,
     delayMs,
-    delayFor: (req) => (/\(fake: slow\)/.test(layerLine(req)) && req.system.includes('write the "Explained" tab') ? 400 : undefined),
+    // a slow layer's Explained, and lecture notes that say "(fake: slow)", stream over about ten seconds, for the browser tests
+    delayFor: (req) => ((/\(fake: slow\)/.test(layerLine(req)) && req.system.includes('write the "Explained" tab')) || (req.task === "lecture-notes" && req.prompt.includes("(fake: slow)")) ? (req.task === "lecture-notes" ? 800 : 400) : undefined),
     hang: (req) => /\(fake: hang\)/.test(layerLine(req)) && req.system.includes('write the "Explained" tab'),
   });

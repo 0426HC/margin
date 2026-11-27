@@ -1,28 +1,22 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
-import { dbAll, dbCount, layerIdsOf, seedProject } from "./helpers";
+import { dbAll, dbCount, seedProject } from "./helpers";
 
-// The Lecture tab: three tabs on every layer, written the first time it is opened from the layer's lecture files only, the student's own
-// lecture notes filtered to the layer, and "Refresh this layer". Fake engine, throwaway data folder.
+// The week's Lecture tab: the same in every layer of a week, in two sections ("From your lecture notes", "From the lecture material"),
+// streamed in when opened, written again only when the notes stop changing or the week's files change. Fake engine (MARGIN_LECTURE_QUIET_S
+// is 4 seconds here), throwaway data folder. The sample course: week 1 a reading only (no tab), week 2 a reading and the student's notes
+// file (notes only), week 3 a reading and the lecture deck (material; notes are added below).
 test.describe.configure({ mode: "serial" });
 
 let id = "";
-let layers: string[] = [];
-/** A layer that holds the lecture slides, and one that doesn't. */
-let withLecture = "";
-let without = "";
+const layersOf = (week: number) =>
+  dbAll<{ id: string }>("select l.id from layers l join parts p on p.id = l.part_id where p.project_id = ? and p.week = ? and l.proposed = 0 order by l.position", id, week).map((r) => r.id);
+const rows = (week: number) => dbAll<{ part: string; text: string; written_at: number }>("select part, text, written_at from week_lecture where project_id = ? and week = ? order by part", id, week);
+const putNotes = (request: APIRequestContext, week: number, lines: string[], left = false) =>
+  request.put(`/api/projects/${id}/weeks/${week}/notes`, { data: { blocks: lines.map((text) => ({ type: "bullet", text })), ...(left ? { left } : {}) } });
 
-const lectureLayers = () =>
-  new Set(dbAll<{ id: string }>("select distinct l.id from layers l join layer_passages lp on lp.layer_id = l.id join passages p on p.id = lp.passage_id join files f on f.id = p.file_id join parts pt on pt.id = l.part_id where pt.project_id = ? and f.name like '%slides%'", id).map((r) => r.id));
-
-test.beforeAll(async ({ request, browser }) => {
+test.beforeAll(async ({ request }) => {
   id = await seedProject(request, "Lecture Course");
-  const page = await browser.newPage();
-  layers = await layerIdsOf(page, id);
-  await page.close();
-  const has = lectureLayers();
-  withLecture = layers.find((l) => has.has(l))!;
-  without = layers.find((l) => !has.has(l))!;
-  for (const l of layers) expect((await request.post(`/api/layers/${l}/write`)).ok()).toBe(true); // every layer has its tabs, so new material can be flagged on any of them
+  for (const l of [...layersOf(1), ...layersOf(2), ...layersOf(3)]) expect((await request.post(`/api/layers/${l}/write`)).ok()).toBe(true);
 });
 test.afterAll(async ({ request }) => {
   await request.delete(`/api/projects/${id}`);
@@ -32,134 +26,139 @@ const tabs = (page: Page) => page.getByRole("tablist", { name: "Show this layer 
 const open = async (page: Page, layer: string) => {
   await page.goto(`/p/${id}/l/${layer}`);
   await expect(tabs(page)).toBeVisible({ timeout: 30_000 });
-  await page.waitForLoadState("networkidle");
+};
+const openLecture = async (page: Page, layer: string) => {
+  await open(page, layer);
+  await tabs(page).getByRole("tab", { name: "Lecture" }).click();
+  return page.getByRole("tabpanel");
 };
 
-test("every layer has three tabs: Explained, Lecture, Source", async ({ page }) => {
-  // a layer without lecture files: walking onto its Lecture tab writes nothing, so the next test starts from no lecture written
-  // (on a production build the write for a lecture layer finishes before the page closes; on the dev server it happened not to)
-  await open(page, without);
-  expect(await tabs(page).getByRole("tab").allTextContents()).toEqual(["Explained", "Lecture", "Source"]);
-  // keyboard: the arrow keys walk the three
-  await tabs(page).getByRole("tab", { name: "Explained" }).focus();
-  await page.keyboard.press("ArrowRight");
-  await expect(tabs(page).getByRole("tab", { name: "Lecture" })).toHaveAttribute("aria-selected", "true");
-  await page.keyboard.press("ArrowRight");
-  await expect(tabs(page).getByRole("tab", { name: "Source" })).toHaveAttribute("aria-selected", "true");
-  await tabs(page).getByRole("tab", { name: "Explained" }).click();
+test("a week with neither lecture notes nor lecture material has no Lecture tab", async ({ page }) => {
+  await open(page, layersOf(1)[0]);
+  expect(await tabs(page).getByRole("tab").allTextContents()).toEqual(["Explained", "Source"]);
+  expect(dbCount("select count(*) from week_lecture where project_id = ?", id)).toBe(0);
 });
 
-test("the Lecture tab is written only when it is first opened, from the lecture files, with counted numbers and checked citations", async ({ page }) => {
+test("lecture material but no notes: the material section streams in, with one line inviting notes", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(String(e)));
-  expect(dbCount("select count(*) from layer_lecture")).toBe(0); // opening Explained and Source never writes it
-  await open(page, withLecture);
-  await tabs(page).getByRole("tab", { name: "Lecture" }).click();
-  const panel = page.getByRole("tabpanel");
-  await expect(panel.getByRole("heading", { name: "By the numbers" })).toBeVisible({ timeout: 30_000 });
-  for (const h of ["Where the lecture spent its time", "What it repeated", "What it flagged as important", "The examples it used", "Where it differs from the reading"]) await expect(panel.getByRole("heading", { name: h })).toBeVisible();
-  await expect(panel.getByText("Counted by Margin from your slides.")).toBeVisible();
-  expect(dbCount("select count(*) from layer_lecture where layer_id = ?", withLecture)).toBe(1);
-  expect(dbCount("select count(*) from layer_lecture")).toBe(1); // only this layer
-
-  // the counted numbers are about the real deck: nine slides, and the lines the deck itself words as a question or an example are copied as written
-  const facts = JSON.parse(dbAll<{ facts: string }>("select facts from layer_lecture where layer_id = ?", withLecture)[0].facts) as { slides: number; files: { name: string }[] };
-  expect(facts.files.map((f) => f.name)).toEqual(["Lecture 3 slides.pptx"]);
-  expect(facts.slides).toBeGreaterThan(0);
+  const panel = await openLecture(page, layersOf(3)[0]);
+  const notes = panel.getByRole("region", { name: "From your lecture notes" });
+  await expect(notes.getByText("Take notes in Lecture notes during class and this section fills in.")).toBeVisible();
+  await expect(notes.getByRole("link", { name: "Lecture notes" })).toHaveAttribute("href", `/p/${id}/lecture-notes/3`);
+  const material = panel.getByRole("region", { name: "From the lecture material" });
+  for (const h of ["What it spent its time on", "What it stressed", "The examples it used", "Where it differs from the readings"]) await expect(material.getByRole("heading", { name: h })).toBeVisible({ timeout: 30_000 });
+  expect(rows(3).map((r) => r.part)).toEqual(["material"]);
 
   // a citation in the margin opens that slide in the original
-  await panel.locator(".m-cite").first().click();
+  await material.locator(".m-cite").first().click();
   await expect(page.getByRole("dialog").or(page.getByRole("complementary", { name: /original|source/i })).first()).toBeVisible();
   await page.keyboard.press("Escape");
-
-  // reopening it asks nothing again: the same row, the same time
-  const written = dbAll<{ written_at: number }>("select written_at from layer_lecture where layer_id = ?", withLecture)[0].written_at;
-  await page.reload();
-  await expect(tabs(page).getByRole("tab", { name: "Lecture" })).toHaveAttribute("aria-selected", "true"); // the choice is remembered per layer
-  await expect(page.getByRole("tabpanel").getByRole("heading", { name: "By the numbers" })).toBeVisible();
-  expect(dbAll<{ written_at: number }>("select written_at from layer_lecture where layer_id = ?", withLecture)[0].written_at).toBe(written);
   expect(errors).toEqual([]);
 });
 
-test("a layer with no lecture files says so and offers Add files", async ({ page }) => {
-  await open(page, without);
-  await tabs(page).getByRole("tab", { name: "Lecture" }).click();
-  const panel = page.getByRole("tabpanel");
-  await expect(panel.getByRole("heading", { name: "No lecture files for this layer yet" })).toBeVisible();
-  expect(dbCount("select count(*) from layer_lecture where layer_id = ?", without)).toBe(0);
-  await panel.getByRole("button", { name: "Add files" }).click();
-  await expect(page.getByRole("dialog").getByRole("heading", { name: "Add files" })).toBeVisible();
-  await page.getByRole("dialog").getByRole("button", { name: "Cancel" }).click();
-  await tabs(page).getByRole("tab", { name: "Explained" }).click();
+test("every layer of the week shows the same tab, written once", async ({ page }) => {
+  const layers = layersOf(3);
+  const written = rows(3)[0].written_at;
+  const texts: string[] = [];
+  for (const l of layers) {
+    const panel = await openLecture(page, l);
+    const material = panel.getByRole("region", { name: "From the lecture material" });
+    await expect(material.getByRole("heading", { name: "What it stressed" })).toBeVisible({ timeout: 30_000 });
+    await expect(panel.getByText("Week 3. The same in every layer of this week.")).toBeVisible();
+    texts.push(await material.innerText());
+  }
+  expect(new Set(texts).size).toBe(1);
+  expect(rows(3)[0].written_at).toBe(written); // opened from every layer, never written again
+  // the choice of tab is remembered per layer
+  await page.reload();
+  await expect(tabs(page).getByRole("tab", { name: "Lecture" })).toHaveAttribute("aria-selected", "true");
 });
 
-test("the student's own lecture notes appear under 'From your class notes · Week N', filtered, in their words, with a gentle second look", async ({ page, request }) => {
-  const put = (week: number, blocks: unknown) => request.put(`/api/projects/${id}/weeks/${week}/notes`, { data: { blocks } });
-  expect((await put(3, [{ type: "bullet", text: "ambition -> counters ambition" }, { type: "bullet", text: "the veto DIFFERS from what I thought" }, { type: "paragraph", text: "lunch was off topic" }])).ok()).toBe(true);
-  await open(page, withLecture);
-  await expect(tabs(page).getByRole("tab", { name: "Lecture" })).toHaveAttribute("aria-selected", "true");
-  const panel = page.getByRole("tabpanel");
-  await expect(panel.getByRole("heading", { name: "From your class notes · Week 3" })).toBeVisible({ timeout: 30_000 });
-  const own = panel.getByRole("region", { name: "From your class notes, Week 3" });
-  await expect(own.getByText("ambition → counters ambition")).toHaveCount(0); // the arrow was typed in the notepad, not here: the line is copied exactly as stored
-  await expect(own.getByText("ambition -> counters ambition")).toBeVisible();
-  await expect(own.getByText("lunch was off topic")).toHaveCount(0); // not about this layer
-  await expect(own.getByText(/These are not the professor’s words/)).toBeVisible();
-  await expect(panel.getByRole("region", { name: "A second look" }).getByText(/Worth a second look/)).toBeVisible();
+test("notes but no lecture material: the notes section only", async ({ page }) => {
+  expect(dbCount("select count(*) from week_notes where project_id = ? and week = 2", id)).toBe(1); // the student's notes file, copied in at import
+  const panel = await openLecture(page, layersOf(2)[0]);
+  const notes = panel.getByRole("region", { name: "From your lecture notes" });
+  await expect(notes.locator("li").first()).toBeVisible({ timeout: 30_000 });
+  await expect(panel.getByRole("region", { name: "From the lecture material" })).toHaveCount(0);
+  expect(rows(2).map((r) => r.part)).toEqual(["notes"]);
+});
 
-  // editing the lecture notes makes the section again (only that section), without writing the lecture a second time
-  const written = dbAll<{ written_at: number }>("select written_at from layer_lecture where layer_id = ?", withLecture)[0].written_at;
-  expect((await put(3, [{ type: "bullet", text: "a brand new line about ambition" }])).ok()).toBe(true);
-  await open(page, withLecture);
-  await expect(panel.getByText("a brand new line about ambition")).toBeVisible({ timeout: 30_000 });
-  await expect(panel.getByText("ambition -> counters ambition")).toHaveCount(0);
-  expect(dbAll<{ written_at: number }>("select written_at from layer_lecture where layer_id = ?", withLecture)[0].written_at).toBe(written);
+test("short class notes are expanded from the week's files and pointed back to them; a point only in the notes is marked, never cited", async ({ page }) => {
+  // the student writes two short lines in class, then leaves the Lecture notes page
+  await page.goto(`/p/${id}/lecture-notes/3`);
+  const pad = page.getByRole("textbox", { name: "Notes for Week 3" });
+  await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
+  await pad.click();
+  await page.getByRole("button", { name: "Bullets" }).click();
+  await page.keyboard.type("ambition counteract ambition");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("prof's dog came to class");
+  await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible({ timeout: 10_000 });
+  expect(rows(3).map((r) => r.part)).toEqual(["material"]); // nothing written while the student types
+  await page.goto(`/p/${id}`); // leaving the page writes the notes section now, not after the quiet time
+  await expect.poll(() => rows(3).map((r) => r.part), { timeout: 15_000 }).toEqual(["material", "notes"]);
+
+  const panel = await openLecture(page, layersOf(3)[0]);
+  const notes = panel.getByRole("region", { name: "From your lecture notes" });
+  const expanded = notes.locator(".m-row").filter({ hasText: "ambition counteract ambition" });
+  await expect(expanded).toBeVisible({ timeout: 30_000 });
+  await expect(expanded.locator(".m-cite")).not.toHaveCount(0); // the readings or slides that cover it, in the margin
+  const own = notes.locator("li").filter({ hasText: "dog" });
+  await expect(own.locator(".m-lec-own")).toHaveText("(from your notes)");
+  expect(rows(3).find((r) => r.part === "notes")!.text).toMatch(/dog came to class\. \(from your notes\)$/m);
+  await expect(panel.getByRole("region", { name: "From the lecture material" })).toBeVisible(); // both sections
+});
+
+test("the notes section is written again only once editing stops, and the old version shows, marked as updating, until the new one streams in", async ({ page, request }) => {
+  const before = rows(3).find((r) => r.part === "notes")!;
+  // autosaves while typing: nothing is written until the notes have been quiet for the quiet time
+  expect((await putNotes(request, 3, ["ambition counteract ambition", "edit one"])).ok()).toBe(true);
+  await page.waitForTimeout(1_500);
+  expect((await putNotes(request, 3, ["ambition counteract ambition", "edit two"])).ok()).toBe(true);
+  await page.waitForTimeout(2_500); // 4 s since the first save, but only 2.5 s since the last
+  expect(rows(3).find((r) => r.part === "notes")!.written_at).toBe(before.written_at);
+  await expect.poll(() => rows(3).find((r) => r.part === "notes")!.text, { timeout: 15_000 }).toContain("edit two");
+
+  // opened while the notes changed (slowly streamed by the fake engine): the previous version stays, with a small updating line
+  expect((await putNotes(request, 3, ["ambition counteract ambition", "edit three (fake: slow)"])).ok()).toBe(true);
+  const panel = await openLecture(page, layersOf(3)[0]);
+  const notes = panel.getByRole("region", { name: "From your lecture notes" });
+  await expect(notes.getByRole("status")).toHaveText(/Updating from your latest notes/, { timeout: 10_000 });
+  await expect(notes.getByText(/edit two/)).toBeVisible();
+  await expect(notes.getByText(/edit three/)).toBeVisible({ timeout: 30_000 }); // the new version streams in, in place of the old
+  await expect(notes.getByText(/edit two/)).toHaveCount(0);
+  await expect(notes.getByRole("status")).toHaveCount(0, { timeout: 40_000 }); // and the updating line goes once it is saved
 });
 
 test("lecture notes are used only on the Lecture tab", async ({ page }) => {
-  await open(page, withLecture);
+  await open(page, layersOf(3)[0]);
   await tabs(page).getByRole("tab", { name: "Explained" }).click();
-  await expect(page.getByText("a brand new line about ambition")).toHaveCount(0);
+  await expect(page.getByText("dog came to class")).toHaveCount(0);
   await tabs(page).getByRole("tab", { name: "Source" }).click();
-  await expect(page.getByText("a brand new line about ambition")).toHaveCount(0);
+  await expect(page.getByText("dog came to class")).toHaveCount(0);
 });
 
-async function addLecture(request: APIRequestContext, name: string) {
-  const text = `# Lecture 3 more\n\n${Array.from({ length: 70 }, (_, i) => `Extra slide point ${i} on ambition and the separation of powers.`).join(" ")}\n`;
-  const r = await request.post(`/api/projects/${id}/updates/stage`, { multipart: { file: { name, mimeType: "text/markdown", buffer: Buffer.from(text) }, relPath: name, type: "lecture", week: "3" } });
-  const row = (await r.json()) as { id: string };
-  const c = await request.post(`/api/projects/${id}/updates/commit`, { data: { staged: [{ fileId: row.id }], removals: [] } });
-  expect(c.ok()).toBe(true);
-}
-
-test("Refresh this layer: new lecture material is flagged, and refreshing writes Explained and Lecture again but never the write-up", async ({ page, request }) => {
-  // the student saves a write-up first
-  const { thread } = (await (await request.post(`/api/layers/${withLecture}/submit`, { data: { text: "My own words about this layer, said plainly." } })).json()) as { thread: { latestWritebackId: string } };
-  expect((await request.post(`/api/layers/${withLecture}/save`, { data: { writebackId: thread.latestWritebackId, choice: "own" } })).ok()).toBe(true);
-  const saved = dbAll<{ id: string; text: string }>("select id, text from note_saves where target_id = ?", withLecture);
-
-  await addLecture(request, "Lecture 3 more slides.md");
-  const marked = dbAll<{ id: string }>("select l.id from layers l join parts p on p.id = l.part_id where p.project_id = ? and l.new_material_at is not null", id).map((r) => r.id);
-  expect(marked.length).toBe(1); // only the layer that took the new slides
-  const layer = marked[0];
-  await open(page, layer);
-  await expect(page.getByText("New material since you saved.")).toBeVisible();
-  await tabs(page).getByRole("tab", { name: "Lecture" }).click();
-  await expect(page.getByRole("tabpanel").getByRole("heading", { name: "By the numbers" })).toBeVisible({ timeout: 30_000 });
-  const before = dbAll<{ written_at: number }>("select written_at from layer_lecture where layer_id = ?", layer)[0].written_at;
-  await page.getByRole("button", { name: "Refresh this layer" }).click();
-  await expect(page.getByText("New material since you saved.")).toHaveCount(0, { timeout: 30_000 });
-  expect(dbAll<{ written_at: number }>("select written_at from layer_lecture where layer_id = ?", layer)[0].written_at).toBeGreaterThan(before);
-  expect(dbCount("select count(*) from layers where id = ? and new_material_at is null", layer)).toBe(1);
-  expect(dbAll<{ id: string; text: string }>("select id, text from note_saves where target_id = ?", withLecture)).toEqual(saved); // the write-up is exactly as saved
+test("two lectures in a week: the material section is written again when the week's lecture files change, one part per lecture", async ({ page, request }) => {
+  const text = `# Lecture 3b: the senate\n\n${Array.from({ length: 70 }, (_, i) => `The senate checks the house on point ${i}. Important: a second chamber slows hasty law.`).join(" ")}\n`;
+  const r = await request.post(`/api/projects/${id}/updates/stage`, { multipart: { file: { name: "Lecture 3b slides.md", mimeType: "text/markdown", buffer: Buffer.from(text) }, relPath: "Lecture 3b slides.md", type: "lecture", week: "3" } });
+  const staged = (await r.json()) as { id: string };
+  expect((await request.post(`/api/projects/${id}/updates/commit`, { data: { staged: [{ fileId: staged.id }], removals: [] } })).ok()).toBe(true);
+  // any new layer the file made is approved, so its passages sit in week 3
+  await request.post(`/api/projects/${id}/structure/approve`, { data: {} });
+  const panel = await openLecture(page, layersOf(3)[0]);
+  const material = panel.getByRole("region", { name: "From the lecture material" });
+  await expect(material.getByRole("heading", { name: "Lecture 3b slides", level: 4 })).toBeVisible({ timeout: 30_000 });
+  await expect(material.getByRole("heading", { name: "Lecture 3 slides", level: 4 })).toBeVisible();
+  await expect(material.getByRole("heading", { name: "What it stressed" })).toHaveCount(2);
 });
 
-test("the demo's lecture layer shows its tab too", async ({ page, request }) => {
+test("the demo's lecture week shows its Lecture tab too", async ({ page, request }) => {
   const { id: demo } = (await (await request.post("/api/demo")).json()) as { id: string };
   const l = dbAll<{ id: string }>("select distinct l.id from layers l join layer_passages lp on lp.layer_id = l.id join passages p on p.id = lp.passage_id join files f on f.id = p.file_id join parts pt on pt.id = l.part_id where pt.project_id = ? and f.name like '%slides%'", demo);
   expect(l.length).toBeGreaterThan(0);
   await page.goto(`/p/${demo}/l/${l[0].id}`);
   await expect(tabs(page)).toBeVisible({ timeout: 30_000 });
   await tabs(page).getByRole("tab", { name: "Lecture" }).click();
-  await expect(page.getByRole("tabpanel").getByRole("heading", { name: "By the numbers" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("tabpanel").getByRole("region", { name: "From the lecture material" }).getByRole("heading", { name: "What it stressed" })).toBeVisible({ timeout: 30_000 });
 });

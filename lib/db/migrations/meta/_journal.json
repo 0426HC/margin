@@ -176,6 +176,13 @@
       "when": 1795800000000,
       "tag": "0024_explained_without_table",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1795900000000,
+      "tag": "0025_week_lecture",
+      "breakpoints": true
     }
   ]
 }

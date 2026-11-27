@@ -139,7 +139,9 @@ export async function fillProject(request: import("@playwright/test").APIRequest
   await request.put(`/api/projects/${id}/notepad`, { data: { blocks: [{ type: "heading", text: "My notes" }, { type: "bullet", text: "a point" }] } });
   await fillExam(request, id);
   await request.post(`/api/projects/${id}/agent-requests`, { data: { text: "Find the passages about faction" } });
-  await request.put(`/api/projects/${id}/weeks/2/notes`, { data: { blocks: [{ type: "paragraph", text: "What the lecture said in week 2" }] } });
+  // leaving the notes page writes the week's Lecture tab notes section; wait for it, so the project's data is complete from here on
+  await request.put(`/api/projects/${id}/weeks/2/notes`, { data: { blocks: [{ type: "paragraph", text: "What the lecture said in week 2" }], left: true } });
+  await expect.poll(() => dbCount("select count(*) from week_lecture where project_id = ? and week = 2 and part = 'notes'", id), { timeout: 15_000 }).toBe(1);
   await post(`/api/projects/${id}/talk`, { question: "What do the readings say about faction?" });
   await post(`/api/projects/${id}/talk`, { question: "What is this passage about?", topic: "A highlighted passage", channel: "note" });
   await post(`/api/projects/${id}/sources/find`);

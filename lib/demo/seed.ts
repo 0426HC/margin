@@ -5,7 +5,7 @@ import type { Db } from "@/lib/db/client";
 import * as s from "@/lib/db/schema";
 
 // The demo course ships as one JSON file: the public-domain sample course already split into sections and layers,
-// with every layer's Source and Explained written, and the course brain's notes on every file. It is built once by `npm run demo:build` and opens instantly, offline.
+// with every layer's Source and Explained written, each week's Lecture tab, and the course brain's notes on every file. It is built once by `npm run demo:build` and opens instantly, offline.
 const rows = z.array(z.record(z.string(), z.unknown()));
 export const demoSeedSchema = z.object({
   version: z.literal(1),
@@ -25,6 +25,8 @@ export const demoSeedSchema = z.object({
   brainMentions: rows.optional(),
   brainLinks: rows.optional(),
   brainReads: rows.optional(),
+  /** Each week's Lecture tab (the lecture material section; the demo ships with no lecture notes). Absent in older seeds. */
+  weekLecture: rows.optional(),
 });
 export type DemoSeed = z.infer<typeof demoSeedSchema>;
 
@@ -53,6 +55,7 @@ export function exportDemoSeed(db: Db, projectId: string): DemoSeed {
     brainMentions: db.select().from(s.brainMentions).where(eq(s.brainMentions.projectId, projectId)).all(),
     brainLinks: db.select().from(s.brainLinks).where(eq(s.brainLinks.projectId, projectId)).all(),
     brainReads: db.select().from(s.brainReads).where(eq(s.brainReads.projectId, projectId)).all(),
+    weekLecture: db.select().from(s.weekLecture).where(eq(s.weekLecture.projectId, projectId)).all(),
   };
 }
 
@@ -92,6 +95,7 @@ export function importDemoSeed(db: Db, seed: DemoSeed): string {
       tx.insert(s.brainMentions).values(r as typeof s.brainMentions.$inferInsert).run();
     for (const r of withIds(seed.brainLinks ?? [], (r) => ({ ...r, noteId: m(r.noteId), otherId: m(r.otherId), projectId }))) tx.insert(s.brainLinks).values(r as typeof s.brainLinks.$inferInsert).run();
     for (const r of withIds(seed.brainReads ?? [], (r) => ({ ...r, fileId: m(r.fileId), projectId }))) tx.insert(s.brainReads).values(r as typeof s.brainReads.$inferInsert).run();
+    for (const r of withIds(seed.weekLecture ?? [], (r) => ({ ...r, id: m(r.id), projectId }))) tx.insert(s.weekLecture).values(r as typeof s.weekLecture.$inferInsert).run();
   });
   return projectId;
 }

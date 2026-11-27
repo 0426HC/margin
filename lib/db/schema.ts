@@ -1,6 +1,5 @@
 import { index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
-import type { ExplainedLayer, LectureWriting, Review } from "@/lib/ai/schemas";
-import type { ClassNotes, LectureFacts } from "@/lib/lecture/types";
+import type { ExplainedLayer, Review } from "@/lib/ai/schemas";
 import type { AgentDocBlock } from "@/lib/agents/types";
 import type { ExamFeedback, ExamQuestion, ExamSource, ExamSummary } from "@/lib/exam/types";
 import type { Block, FileKind, FileRole, PageKind } from "@/lib/import/types";
@@ -364,7 +363,7 @@ export const quickNotes = sqliteTable(
   (t) => [uniqueIndex("quick_notes_target").on(t.projectId, t.targetType, t.targetId)],
 );
 
-/** The student's own notes for one week of the course: a notepad page of blocks, autosaved. Only the Lecture tab ever reads them, and only as the student's words. */
+/** The student's own notes for one week of the course: a notepad page of blocks, autosaved. Only the week's Lecture tab ever reads them, and only as the student's words. */
 export const weekNotes = sqliteTable(
   "week_notes",
   {
@@ -377,26 +376,24 @@ export const weekNotes = sqliteTable(
 );
 
 /**
- * The Lecture tab of a layer, written the first time it is opened: numbers counted by code from the layer's lecture slides (`facts`), the prose
- * the model wrote from them (`writing`, citations checked), and the student's own lecture notes filtered to this layer (`notes`, copied by code).
- * `notesHash` says which version of the lecture notes the filtered lines came from, so they are filtered again when the notes change.
+ * The Lecture tab of one week, shown the same in every layer of that week, in two sections: what the student's own lecture notes covered,
+ * expanded from the week's material (`part` "notes"), and what the lecture material the professor posted spent its time on (`part`
+ * "material"). `text` is the section as Claude streamed it (`lib/lecture/text.ts`), citations already checked. `sourceHash` says which
+ * notes and passages it was written from, so it is written again, in the background, when they change.
  */
-export const layerLecture = sqliteTable(
-  "layer_lecture",
+export const weekLecture = sqliteTable(
+  "week_lecture",
   {
     id: id(),
-    layerId: text("layer_id").notNull().references(() => layers.id, { onDelete: "cascade" }),
-    facts: text("facts", { mode: "json" }).$type<LectureFacts>().notNull(),
-    writing: text("writing", { mode: "json" }).$type<LectureWriting>().notNull(),
-    notes: text("notes", { mode: "json" }).$type<ClassNotes>().notNull(),
-    notesHash: text("notes_hash").notNull(),
+    projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+    week: integer("week").notNull(),
+    part: text("part", { enum: ["notes", "material"] }).notNull(),
+    text: text("text").notNull(),
+    sourceHash: text("source_hash").notNull(),
     writtenAt: integer("written_at").notNull().$defaultFn(() => Date.now()),
   },
-  (t) => [uniqueIndex("layer_lecture_layer").on(t.layerId)],
+  (t) => [uniqueIndex("week_lecture_part").on(t.projectId, t.week, t.part)],
 );
-
-export type LectureFactsJson = LectureFacts;
-export type LectureWritingJson = LectureWriting;
 
 /** An exam section of a project (a Midterm or a Final): the instruction sheet, read into a summary the student checks and edits before anything is generated. */
 export const exams = sqliteTable(

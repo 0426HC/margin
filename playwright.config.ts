@@ -31,6 +31,6 @@ export default defineConfig({
     url: `http://localhost:${port}`,
     reuseExistingServer: false,
     timeout: prod ? 300_000 : 120_000,
-    env: { MARGIN_DATA_DIR: dataDir, MARGIN_ENGINE: "fake", MARGIN_LAYER_IDLE_S: "12", MARGIN_BACKGROUND: process.env.E2E_BACKGROUND ?? "off", MARGIN_DIST_DIR: prod ? ".next-e2e-prod" : ".next-e2e" }, // the fake engine answers instantly and offline
+    env: { MARGIN_DATA_DIR: dataDir, MARGIN_ENGINE: "fake", MARGIN_LAYER_IDLE_S: "12", MARGIN_LECTURE_QUIET_S: "4", MARGIN_BACKGROUND: process.env.E2E_BACKGROUND ?? "off", MARGIN_DIST_DIR: prod ? ".next-e2e-prod" : ".next-e2e" }, // the fake engine answers instantly and offline
   },
 });

@@ -7,6 +7,7 @@ import { refuseIfDemo } from "@/lib/projects/demo-guard";
 import { eq, inArray } from "drizzle-orm";
 import * as s from "@/lib/db/schema";
 import { ensureExams } from "@/lib/exam/service";
+import { kickBackground } from "@/lib/layers/background";
 import { commitFiles, getPending, placeNewPassages } from "@/lib/updates/service";
 
 export const maxDuration = 300;
@@ -39,6 +40,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/projects/[id]/u
     }
     ensureExams(db, id); // every exam sheet that arrived gets its exam
     const placed = await placeNewPassages(db, getEngine(), id, req.signal);
+    kickBackground(); // a week whose lecture files changed has its Lecture tab written again
     return Response.json({ committed, placed, pending: getPending(db, id) });
   } catch (e) {
     return failure(e);
